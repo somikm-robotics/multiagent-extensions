@@ -1,0 +1,12 @@
+<library path="path_planner_plugin">
+  <class
+    name="Nav2PathPlannerPlugin"
+    type="Nav2PathPlannerPlugin"
+    base_class_type="PathPlannerPluginBase">
+  </class>
+  <class
+    name="AStarPathPlannerPlugin"
+    type="AStarPathPlannerPlugin"
+    base_class_type="PathPlannerPluginBase">
+  </class>
+</library>

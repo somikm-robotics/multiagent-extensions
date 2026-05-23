@@ -1,0 +1,7 @@
+<library path="initial_inspection_relay_plugin">
+  <class
+    name="Nav2NavigationPlugin"
+    type="Nav2NavigationPlugin"
+    base_class_type="Nav2NavigationPluginBase">
+  </class>
+</library>
