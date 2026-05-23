@@ -1,0 +1,6 @@
+<library path="orbit_controller">
+  <class
+    name="orbit_controller/OrbitController"
+    type="orbit_controller::OrbitController"
+    base_class_type="nav2_core::Controller"/>
+</library>

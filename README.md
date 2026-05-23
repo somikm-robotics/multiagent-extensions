@@ -17,7 +17,7 @@ Real hardware integration of dust (PMS7003) and gas (VOC) sensors into a ROS2-ba
 ### [Nav2 Sim-to-Real](nav2-sim-to-real/)
 Autonomous navigation on TurtleBot4 Lite using Nav2 — mapping, localisation, path planning, and a custom orbit-based inspection behaviour. Extends simulation-based Nav2 work from the MSc project to real robot deployment.
 
-**Status:** Complete
+**Status:** Work in progress
 
 ---
 

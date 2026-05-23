@@ -1,0 +1,219 @@
+amcl:
+  ros__parameters:
+    use_sim_time: true
+
+    base_frame_id: agilex_diff_drive/base_link
+    odom_frame_id: odom
+    global_frame_id: map
+
+    scan_topic: scan
+
+    min_particles: 200
+    max_particles: 1000
+
+    alpha1: 0.2
+    alpha2: 0.2
+    alpha3: 0.2
+    alpha4: 0.2
+    alpha5: 0.2
+
+    update_min_d: 0.2
+    update_min_a: 0.2
+
+    resample_interval: 1
+    transform_tolerance: 0.2
+    recovery_alpha_slow: 0.0
+    recovery_alpha_fast: 0.0
+
+    set_initial_pose: true
+    initial_pose:
+      x: -1.0
+      y: 0.0
+      z: 0.0
+      yaw: 0.0
+
+
+map_server:
+  ros__parameters:
+    use_sim_time: true
+    yaml_filename: /root/ros2_ws/src/indoor_ground_agent/maps/indoor_map.yaml
+
+
+planner_server:
+  ros__parameters:
+    use_sim_time: true
+    expected_planner_frequency: 20.0
+
+    planner_plugins: ["GridBased"]
+    GridBased:
+      plugin: nav2_navfn_planner/NavfnPlanner
+      tolerance: 0.2
+      use_astar: false
+      allow_unknown: true
+
+
+controller_server:
+  ros__parameters:
+    use_sim_time: true
+    controller_frequency: 20.0
+
+    controller_plugins: ["FollowPath", "Orbit"]
+
+    FollowPath:
+      plugin: nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
+
+      desired_linear_vel: 0.2
+      min_linear_vel: 0.05
+      max_linear_vel: 0.5
+
+      min_lookahead_dist: 0.4
+      max_lookahead_dist: 0.8
+      lookahead_time: 1.5
+
+      rotate_to_heading_angular_vel: 0.6
+      allow_reversing: false
+      # use_rotate_to_heading: false
+
+    Orbit:
+      plugin: "orbit_controller/OrbitController"
+
+    progress_checker_plugin: "progress_checker"
+    goal_checker_plugin: "goal_checker"
+
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.02
+      movement_time_allowance: 20.0
+
+    goal_checker:
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.2
+      yaw_goal_tolerance: 0.15
+      stateful: true
+
+
+behavior_server:
+  ros__parameters:
+    use_sim_time: true
+    behavior_plugins: ["Spin", "Backup", "DriveOnHeading"]
+
+    Spin:
+      plugin: nav2_behaviors/Spin
+
+    Backup:
+      plugin: nav2_behaviors/BackUp
+
+    DriveOnHeading:
+      plugin: nav2_behaviors/DriveOnHeading
+
+
+bt_navigator:
+  ros__parameters:
+    use_sim_time: true
+    global_frame: map
+    robot_base_frame: agilex_diff_drive/base_link
+    odom_topic: /odom
+
+    default_nav_to_pose_bt_xml: /root/ros2_ws/install/indoor_ground_agent/share/indoor_ground_agent/config/bt/navigate_to_pose_minimal.xml
+    default_nav_through_poses_bt_xml: /root/ros2_ws/install/indoor_ground_agent/share/indoor_ground_agent/config/bt/minimal_through_poses.xml
+
+
+    # default_nav_to_pose_bt_xml: /opt/ros/humble/share/nav2_bt_navigator/behavior_trees/navigate_to_pose_w_replanning_and_recovery.xml
+    # default_nav_through_poses_bt_xml: /opt/ros/humble/share/nav2_bt_navigator/behavior_trees/navigate_to_pose_w_replanning_and_recovery.xml
+
+    bt_loop_duration: 10
+    
+    wait_for_action_server_timeout: 5.0
+
+    # default_server_timeout: 20
+    # plugin_lib_names:
+    #   - nav2_compute_path_to_pose_action_bt_node
+    #   - nav2_follow_path_action_bt_node
+    #   - nav2_spin_action_bt_node
+    #   - nav2_back_up_action_bt_node
+    #   - nav2_drive_on_heading_action_bt_node
+    #   - nav2_clear_costmap_service_bt_node
+    #   - nav2_goal_reached_condition_bt_node
+    #   - nav2_is_stuck_condition_bt_node
+
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      use_sim_time: true
+      global_frame: map
+      robot_base_frame: agilex_diff_drive/base_link
+      robot_radius: 0.2
+      resolution: 0.05
+      track_unknown_space: true
+      update_frequency: 1.0
+      publish_frequency: 1.0
+
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+
+      static_layer:
+        plugin: nav2_costmap_2d::StaticLayer
+
+      obstacle_layer:
+        plugin: nav2_costmap_2d::ObstacleLayer
+        observation_sources: scan
+        scan:
+          topic: scan
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          data_type: LaserScan
+
+      inflation_layer:
+        plugin: nav2_costmap_2d::InflationLayer
+        inflation_radius: 0.35
+        cost_scaling_factor: 3.0
+
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      use_sim_time: true
+      global_frame: odom
+      robot_base_frame: agilex_diff_drive/base_link
+      robot_radius: 0.2
+      rolling_window: true
+      width: 3
+      height: 3
+      resolution: 0.05
+      update_frequency: 5.0
+      publish_frequency: 2.0
+
+      plugins: ["obstacle_layer", "inflation_layer"]
+
+      obstacle_layer:
+        plugin: nav2_costmap_2d::ObstacleLayer
+        observation_sources: scan
+        scan:
+          topic: scan
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          data_type: LaserScan
+
+      inflation_layer:
+        plugin: nav2_costmap_2d::InflationLayer
+        inflation_radius: 0.3
+        cost_scaling_factor: 3.0
+
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: true
+    enabled: true
+
+    smoothing_frequency: 20.0
+    feedback: "CLOSED_LOOP"
+
+    max_velocity: [0.5, 0.0, 1.0]
+    min_velocity: [0.0, 0.0, -1.0]
+
+    max_accel: [1.0, 0.0, 2.0]
+    max_decel: [-1.0, 0.0, -2.0]
+
+    velocity_timeout: 0.2
+
