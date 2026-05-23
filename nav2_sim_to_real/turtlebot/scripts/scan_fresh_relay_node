@@ -1,0 +1,2 @@
+#!/bin/bash
+exec python3 -m turtlebot.nodes.scan_fresh_relay_node "$@"

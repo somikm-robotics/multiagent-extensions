@@ -1,0 +1,217 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="indoor_world">
+
+    <!-- Physics -->
+    <!-- <physics name="default_physics" type="ode">
+      <real_time_update_rate>1000</real_time_update_rate>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+
+      <ode>
+        <solver>
+          <type>quick</type>
+          <iters>50</iters>
+        </solver>
+        <constraints>
+          <cfm>0.0</cfm>
+          <erp>0.2</erp>
+        </constraints>
+      </ode>
+    </physics> -->
+
+  <!-- Physics engine system plugin -->
+    <plugin
+      filename="libignition-gazebo6-physics-system.so"
+      name="ignition::gazebo::systems::Physics"/>
+
+    <!-- Scene broadcaster (needed for GUI to render models) -->
+    <plugin
+      filename="libignition-gazebo6-scene-broadcaster-system.so"
+      name="ignition::gazebo::systems::SceneBroadcaster"/>
+
+    <!-- User commands (allows GUI drag, delete, spawn, etc.) -->
+    <plugin
+      filename="libignition-gazebo6-user-commands-system.so"
+      name="ignition::gazebo::systems::UserCommands"/>
+
+    <!-- Sensor system plugin (required for cameras and other sensors) -->
+    <plugin
+      filename="libignition-gazebo6-sensors-system.so"
+      name="ignition::gazebo::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <!-- IMU system plugin -->
+    <plugin
+      filename="libignition-gazebo6-imu-system.so"
+      name="ignition::gazebo::systems::Imu">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+     
+    <!-- Lighting -->
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Sun</uri>
+    </include>
+
+    <!-- Ground -->
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Ground Plane</uri>
+    </include>
+
+    <!-- ===================== -->
+    <!-- Walls (simple room) -->
+    <!-- ===================== -->
+
+    <!-- Wall 1 -->
+    <model name="wall_north">
+      <static>true</static>
+      <pose>0 5 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box><size>10 0.2 2</size></box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box><size>10 0.2 2</size></box>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Wall 2 -->
+    <model name="wall_south">
+      <static>true</static>
+      <pose>0 -5 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box><size>10 0.2 2</size></box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box><size>10 0.2 2</size></box>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Wall 3 -->
+    <model name="wall_east">
+      <static>true</static>
+      <pose>5 0 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box><size>0.2 10 2</size></box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box><size>0.2 10 2</size></box>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Wall 4 -->
+    <model name="wall_west">
+      <static>true</static>
+      <pose>-5 0 1 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box><size>0.2 10 2</size></box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box><size>0.2 10 2</size></box>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ===================== -->
+    <!-- Internal obstacles -->
+    <!-- ===================== -->
+
+    <!-- <model name="box_obstacle_1">
+      <static>true</static>
+      <pose>2 2 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box><size>1 1 1</size></box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box><size>1 1 1</size></box>
+          </geometry>
+        </visual>
+      </link>
+    </model> -->
+
+    <model name="box_obstacle_2">
+      <static>true</static>
+      <pose>-4 -1 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box><size>1 1 1</size></box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box><size>1 1 1</size></box>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+<model name="sphere_obstacle_small">
+  <static>true</static>
+  <pose>1 1.5 0.25 0 0 0</pose>
+  <link name="link">
+    <collision name="collision">
+      <geometry>
+        <sphere>
+          <radius>0.25</radius>
+        </sphere>
+      </geometry>
+    </collision>
+    <visual name="visual">
+      <geometry>
+        <sphere>
+          <radius>0.25</radius>
+        </sphere>
+      </geometry>
+    </visual>
+  </link>
+</model>
+
+<!-- <model name="orbit_marker">
+    <static>true</static>
+    <pose>0 0.75 0.25 0 0 0</pose>
+    <link name="link">
+    <visual name="dot_visual">
+        <geometry>
+        <cylinder>
+            <radius>0.05</radius>
+            <length>0.01</length>
+        </cylinder>
+        </geometry>
+        <material>
+        <ambient>1 0 0 1</ambient>
+        <diffuse>1 0 0 1</diffuse>
+        </material>
+    </visual>
+    </link>
+</model> -->
+
+    
+  </world>
+</sdf>
