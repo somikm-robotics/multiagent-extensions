@@ -1,0 +1,12 @@
+<library path="dust_sensor_relay_plugin">
+  <class
+    name="TwistCommanderOrbitHazardPlugin"
+    type="TwistCommanderOrbitHazardPlugin"
+    base_class_type="OrbitHazardPluginBase">
+  </class>
+  <class
+    name="Nav2CommanderOrbitHazardPlugin"
+    type="Nav2CommanderOrbitHazardPlugin"
+    base_class_type="OrbitHazardPluginBase">
+  </class>
+</library>

@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>ground_agent_mission_handler_plugins</name>  
+  <version>0.0.0</version>
+  <description>ROS2 C++ package for the Mission Handler Plugins of the 
+      ground agent in multi-agent mining system</description>
+
+  <maintainer email="you@example.com">Your Name</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>rclcpp</exec_depend>
+
+  <build_depend>transport_interfaces</build_depend>
+  <exec_depend>transport_interfaces</exec_depend>
+  
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+
+</package>

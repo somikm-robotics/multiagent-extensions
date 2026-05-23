@@ -1,0 +1,7 @@
+<library path="initial_inspection_relay_plugin">
+  <class
+    name="InitialInspectionPlugin"
+    type="InitialInspectionPlugin"
+    base_class_type="InitialInspectionPluginBase">
+  </class>
+</library>
