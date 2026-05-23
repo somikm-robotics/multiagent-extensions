@@ -87,17 +87,17 @@ turtlebot/
 
 ## Third-Party Models
 
-Agilex robot meshes are not included in this repository due to file size.
-Originally downloaded from [Agilex Robotics](https://github.com/agilexrobotics)
-and modified for this project. Modified versions are available in the 
-parent project:
+Agilex robot meshes are not included in this repository.
+Sourced from [scout_ros2](https://github.com/agilexrobotics/scout_ros2) 
+(AgileX Robotics, Apache License 2.0) — unmodified.
 
 | Asset | Location |
 |-------|----------|
-| Agilex meshes (modified) | [multi-agent-hazard-detection](https://github.com/somikm-robotics/multi-agent-hazard-detection) — `ground_agent/models/` |
+| Agilex meshes | [multi-agent-hazard-detection](https://github.com/somikm-robotics/multi-agent-hazard-detection) — `ground_agent/models/` |
 
 Copy into `indoor_ground_agent/models/agilex/` before running simulation.
 
+See `NOTICE` and `LICENSE` in that directory for attribution details.
 ---
 
 ## Tech Stack
