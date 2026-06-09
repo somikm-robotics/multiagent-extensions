@@ -1,0 +1,13 @@
+#Goal
+geometry_msgs/Pose goal
+bool is_return
+
+---
+#Result
+bool success
+string message
+geometry_msgs/PoseStamped[] waypoints 
+
+---
+#Feedback
+string status     #possible values: accepted, planninhg, path_found, failed
