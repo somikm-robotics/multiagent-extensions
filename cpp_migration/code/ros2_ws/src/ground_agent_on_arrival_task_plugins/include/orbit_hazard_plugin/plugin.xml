@@ -1,0 +1,12 @@
+<library path="orbit_hazard_plugin">
+  <class
+    name="TwistCommanderOrbitHazardPlugin"
+    type="TwistCommanderOrbitHazardPlugin"
+    base_class_type="OrbitHazardManagerPluginBase">
+  </class>
+  <class
+    name="Nav2OrbitHazardManagerPlugin"
+    type="Nav2OrbitHazardManagerPlugin"
+    base_class_type="OrbitHazardManagerPluginBase">
+  </class>
+</library>
