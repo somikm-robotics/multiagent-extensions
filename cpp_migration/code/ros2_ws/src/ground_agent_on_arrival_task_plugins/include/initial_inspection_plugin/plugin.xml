@@ -1,4 +1,4 @@
-<library path="initial_inspection_relay_plugin">
+<library path="initial_inspection_plugin">
   <class
     name="InitialInspectionPlugin"
     type="InitialInspectionPlugin"
