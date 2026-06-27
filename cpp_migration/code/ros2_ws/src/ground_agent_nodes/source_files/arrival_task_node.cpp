@@ -1,73 +1,126 @@
-#include "arrival_task_node.h"
+#include "arrival_task_node.hpp"
 
-ArrivalTaskNode::ArrivalTaskNode() : Node ("arrival_task_node")
+#include "agent_utils.hpp"
+
+ArrivalTaskNode::ArrivalTaskNode() : Node ("arrival_task_node"),
+                                     initialInspectionPluginLoader_("ground_agent_on_arrival_task_plugins", "InitialInspectionPluginBase"),
+                                     orbitHazardPluginLoader_("ground_agent_on_arrival_task_plugins", "OrbitHazardManagerPluginBase")   
 {
     // Publishers
-    _missionStatusPub = this->create_publisher<transportMsgs::MissionStatus>(
+    missionStatusPub_ = this->create_publisher<transportMsgs::MissionStatus>(
         "on_arrival_task_mission_status", 10);
 
     //Subscriptions
-    _onArrivalTaskStartSub = this->create_subscription<transportMsgs::OnArrivalTask>(
+    onArrivalTaskStartSub_ = this->create_subscription<transportMsgs::OnArrivalTask>(
     "on_arrival_task", 10, [this](const transportMsgs::OnArrivalTask& result){
         this->onArrival(result);
     });
 
-    _onInspectionCompletedSub = this->create_subscription<transportMsgs::MissionCompleted>(
+    onInspectionCompletedSub_ = this->create_subscription<transportMsgs::MissionCompleted>(
     "inspection_complete", 10, [this](const transportMsgs::MissionCompleted& result){
         this->onInitialInspectionComplete(result);
     });
 
-    _onOrbitCompletedSub = this->create_subscription<transportMsgs::MissionCompleted>(
+    onOrbitCompletedSub_ = this->create_subscription<transportMsgs::MissionCompleted>(
     "orbit_complete", 10, [this](const transportMsgs::MissionCompleted& result){
         this->onOrbitComplete(result);
     });
 
-    _onDensityEstimationCompletedSub = this->create_subscription<transportMsgs::DensityEstimationResult>(
-    "estimation_complete", 10, [this](const transportMsgs::DensityEstimationResult& result){
-        this->onDensityEstimationComplete(result);
+    onDustPlumeActionsCompletedSub_ = this->create_subscription<transportMsgs::MissionStatus>(
+    "dust_plume_actions_complete", 10, [this](const transportMsgs::MissionStatus& actionsCompletedMsg){
+        this->onDustPlumeActionsComplete(actionsCompletedMsg);
     });
 
     // clients
-    _initialInspectionClient = this->create_client<InitialInspection>("initial_inspection");
-    _orbitHazardClient = this->create_client<OrbitHazard>("orbit_fibrous_hazard");
+  //  initialInspectionClient_ = this->create_client<InitialInspection>("initial_inspection");
+  //  orbitHazardClient_ = this->create_client<OrbitHazard>("orbit_fibrous_hazard");
+
+    // plugin
+    initialInspectionPlugin_ = initialInspectionPluginLoader_.createSharedInstance("ground_agent_on_arrival_task_plugins/InitialInspectionPlugin");
+
+    auto pluginType = AgentUtils::getCurrentOrbitHazardPlugin();
+    if(pluginType == "nav2") {
+        orbitHazardPlugin_ = orbitHazardPluginLoader_.createSharedInstance("ground_agent_on_arrival_task_plugins/Nav2OrbitHazardManagerPlugin");
+    } else {
+        orbitHazardPlugin_ = orbitHazardPluginLoader_.createSharedInstance("ground_agent_on_arrival_task_plugins/TwistCommanderOrbitHazardPlugin");
+    }
+
+    hazardType_ = HazardType::NONE;
+    taskType_ = TaskType::NONE;
 }
 
-void ArrivalTaskNode::onArrival(transportMsgs::OnArrivalTask& arrivalTask)
+void ArrivalTaskNode::initialise()
 {
-    // TO Do implementation. Just adding flow for now
-	auto initialInspectionRequest = std::make_shared<InitialInspection::Request>();
-	_requestPathPlanClient->async_send_request(initialInspectionRequest);
-
-    auto orbitHazardRequest = std::make_shared<OrbitHazard::Request>();
-	_orbitHazardClient->async_send_request(orbitHazardRequest);
-
-    auto plumeDensityRequest = std::make_shared<PlumeDensity::Request>();
-	_plumeDensityClient->async_send_request(plumeDensityRequest);
+    initialInspectionPlugin_->initialise(this->shared_from_this());
+    orbitHazardPlugin_->initialise(this->shared_from_this());
 }
 
-void ArrivalTaskNode::onDensityEstimationComplete(transportMsgs::DensityEstimationResult& result)
+void ArrivalTaskNode::onArrival(const transportMsgs::OnArrivalTask& arrivalTaskMsg)
 {
+    try {
+        RCLCPP_INFO_STREAM(this->get_logger(), "On Arrival: Hazard Type: " << arrivalTaskMsg.hazard_type << " Task Type: " << arrivalTaskMsg.task_type);    
+        //hazardType_ = AgentUtils::parseHazardType(arrivalTaskMsg.hazard_type);
+        //taskType_ = AgentUtils::parseTaskType(arrivalTaskMsg.task_type);
+        
+        if(hazardType_ == HazardType::FIBROUS_HAZARD) {
+            if(taskType_ == TaskType::INITIAL_INSPECTION) {
+                auto initialInspectionRequest = std::make_shared<InitialInspection::Request>();
+                initialInspectionRequest->hazard_type = arrivalTaskMsg.hazard_type;
+                auto response = initialInspectionPlugin_->performInspection(initialInspectionRequest);
+                RCLCPP_INFO_STREAM(this->get_logger(), "Inspection Inspection returned: " << response->message);    
+            } else if (taskType_ == TaskType::ASBESTOS_ANALYSIS) {
+                auto orbitHazardRequest = std::make_shared<OrbitHazard::Request>();
+                orbitHazardRequest->hazard_type = arrivalTaskMsg.hazard_type;
+                orbitHazardRequest->estimated_hazard_diameter = arrivalTaskMsg.estimated_hazard_diameter;
+                orbitHazardRequest->hazard_center_point = arrivalTaskMsg.hazard_center_point;
+                orbitHazardPlugin_->doHazardOrbit(orbitHazardRequest);
+            }
+        } else if (hazardType_ == HazardType::DUST_PLUME) {
+            transportMsgs::StartMission startMissionMsg;
+            startMissionMsg.message = "Starting Dust Plume Actions";
+            startDustPlumeActionsMissionPub_->publish(startMissionMsg);
+            RCLCPP_INFO_STREAM(this->get_logger(), startMissionMsg.message);
+        }
+
+    }catch(const std::runtime_error& ex) {
+        RCLCPP_ERROR(this->get_logger(), "Exception occurred: %s", ex.what());
+    }
 }
 
-void ArrivalTaskNode::onOrbitComplete(transportMsgs::MissionCompleted& orbitCompleted)
+void ArrivalTaskNode::onDustPlumeActionsComplete(const transportMsgs::MissionStatus &dustPlumeActionsCompletedMsg)
 {
+    this->publishTaskCompleteMessage(dustPlumeActionsCompletedMsg.message, dustPlumeActionsCompletedMsg.success);
 }
 
-void ArrivalTaskNode::onInitialInspectionComplete(transportMsgs::MissionCompleted& inspectionCompleted)
+void ArrivalTaskNode::onOrbitComplete(const transportMsgs::MissionCompleted& orbitCompletedMsg)
 {
+    std::string msg = "Orbit of Fibrous hazard completed, ros2 bags collected for further analysis";
+    this->publishTaskCompleteMessage(msg, orbitCompletedMsg.success);
 }
 
-void ArrivalTaskNode::publishTaskCompleteMessage(std::string& message, bool success)
+void ArrivalTaskNode::onInitialInspectionComplete(const transportMsgs::MissionCompleted& inspectionCompletedMsg)
 {
-    //TODO: Implementation - Only flow done
-    transportMsgs::MissionStatus missionStatusMessage;
-    _missionStatusPub->publish(missionStatusMessage);
+    std::string msg = "Inspection completed";
+    this->publishTaskCompleteMessage(msg, inspectionCompletedMsg.success);
+}
+
+void ArrivalTaskNode::publishTaskCompleteMessage(const std::string& message, bool success)
+{
+    // auto taskType = AgentUtils::toTaskTypeStr(taskType_);
+    // transportMsgs::MissionStatus missionStatusMessage;
+    // missionStatusMessage.hazard_type = AgentUtils::toHazardTypeString(hazardType_);
+    // missionStatusMessage.task_type = taskType;
+    // missionStatusMessage.message = message;
+    // missionStatusMessage.success = success;
+    // missionStatusPub_->publish(missionStatusMessage);
+
+    // RCLCPP_INFO_STREAM(this->get_logger(), "Published Mission status message for " << taskType);
 }
 
 int main(int argc, char** argv) {
 
     auto node = std::make_shared<ArrivalTaskNode>();
-
+    node->initialise();
     try {
         rclcpp::spin(node);
     } catch(const std::exception &ex) {

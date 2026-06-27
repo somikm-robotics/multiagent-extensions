@@ -15,6 +15,9 @@
   <build_depend>geometry_msgs</build_depend>
   <exec_depend>geometry_msgs</exec_depend>
 
+  <build_depend>sensor_msgs</build_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+
   <!-- generated type‑support at run‑time -->
   <exec_depend>rosidl_default_runtime</exec_depend>
 

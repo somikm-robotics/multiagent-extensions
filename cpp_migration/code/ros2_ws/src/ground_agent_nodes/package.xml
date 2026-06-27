@@ -13,6 +13,10 @@
 
   <build_depend>transport_interfaces</build_depend>
   <exec_depend>transport_interfaces</exec_depend>
+  <build_depend>shared_infrastructure</build_depend>
+  <exec_depend>shared_infrastructure</exec_depend>
+  <depend>pluginlib</depend>
+  <depend>unique_identifier_msgs</depend>
   
   <export>
     <build_type>ament_cmake</build_type>
