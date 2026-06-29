@@ -1,0 +1,7 @@
+<library path="dust_sensor_relay_plugin">
+  <class
+    name="DustSensorRelayPlugin"
+    type="DustSensorRelayPlugin"
+    base_class_type="DustSensorRelayPluginBase">
+  </class>
+</library>
