@@ -1,2 +1,4 @@
 ---
 bool success
+float32 density
+string severity_level

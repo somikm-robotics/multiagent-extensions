@@ -1,0 +1,6 @@
+#Request
+sensor_msgs/Image detected_image
+---
+#Response
+float32 density
+bool success
