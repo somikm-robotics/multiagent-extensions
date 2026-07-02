@@ -5,18 +5,17 @@ project(transport_interfaces)
 find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)  
 find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/OverrideMission.srv"
-  "srv/RequestPathPlan.srv"
-  "srv/PathPlanResult.srv"
   "srv/OrbitHazard.srv"
-  "srv/NavigateRequest.srv"
+  "srv/Navigate.srv"
   "srv/InitialInspection.srv"
   "srv/PlumeDensity.srv"
+  "srv/DensityRegressor.srv"
 
   "msg/DustSensorResult.msg"
-
   "msg/HazardPose.msg"
   "msg/NavigationResult.msg"
   "msg/BaseReturn.msg"
@@ -25,8 +24,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/MissionCompleted.msg"
   "msg/UIOverrideMission.msg"
   "msg/DensityEstimationResult.msg"
+  "msg/StartMission.msg"
 
-  DEPENDENCIES geometry_msgs
+  "action/RequestPathPlan.action"
+
+  DEPENDENCIES geometry_msgs sensor_msgs
 )
 
 ament_export_dependencies(rosidl_default_runtime)
