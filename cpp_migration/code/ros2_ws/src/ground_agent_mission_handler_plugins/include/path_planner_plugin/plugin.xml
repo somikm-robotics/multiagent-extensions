@@ -4,9 +4,4 @@
     type="Nav2PathPlannerPlugin"
     base_class_type="PathPlannerPluginBase">
   </class>
-  <class
-    name="AStarPathPlannerPlugin"
-    type="AStarPathPlannerPlugin"
-    base_class_type="PathPlannerPluginBase">
-  </class>
 </library>
