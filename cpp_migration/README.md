@@ -83,8 +83,8 @@ Complete ROS2 message and service definitions matching the Python system:
 
 ## Related Projects
 
-- **MSc System (Python):** [multi-agent-hazard-detection](https://github.com/yourhandle/multi-agent-hazard-detection)
-- **Warehouse Project (C++):** [warehouse-inspection-ros2](https://github.com/yourhandle/warehouse-inspection-ros2)
+- **MSc System (Python):** [multi-agent-hazard-detection](https://github.com/somikm-robotics/multi-agent-hazard-detection)
+- **Warehouse Project (C++):** [warehouse-inspection-ros2](https://github.com/somikm-robotics/warehouse-inspection-ros2)
 
 ---
 
