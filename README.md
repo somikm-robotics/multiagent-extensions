@@ -43,6 +43,6 @@ The core theme across all projects — autonomous systems detecting and respondi
 |----------|-------------|
 | Robotics Framework | ROS2, Nav2 |
 | Hardware | TurtleBot4 Lite, Raspberry Pi, Arduino |
-| Languages | Python · C++ (migration) |
+| Languages | C++ (migration) · Python |
 | Sensing | PMS7003 (dust), VOC gas sensor |
 | Tools | SLAM Toolbox, Serial Communication |
