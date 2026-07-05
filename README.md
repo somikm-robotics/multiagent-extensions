@@ -14,14 +14,14 @@ Real hardware integration of dust (PMS7003) and gas (VOC) sensors into a ROS2-ba
 
 ---
 
-### [Nav2 Sim-to-Real](nav2-sim-to-real/)
+### [Nav2 Sim-to-Real](nav2_sim_to_real/README.md)
 Autonomous navigation on TurtleBot4 Lite using Nav2 — mapping, localisation, path planning, and a custom orbit-based inspection behaviour. Extends simulation-based Nav2 work from the MSc project to real robot deployment.
 
 **Status:** Work in progress
 
 ---
 
-### [Multi-Agent C++ Migration](multi-agent-cpp/)
+### [Multi-Agent C++ Migration](cpp_migration/README.md)
 Migration of Python-based ROS2 agents from the MSc multi-agent system to C++, targeting production-grade performance and real-world deployment readiness.
 
 **Status:** Work in progress
