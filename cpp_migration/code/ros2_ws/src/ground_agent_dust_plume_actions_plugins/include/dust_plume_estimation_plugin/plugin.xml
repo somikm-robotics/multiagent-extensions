@@ -1,0 +1,7 @@
+<library path="dust_plume_estimation_plugin">
+  <class
+    name="DustPlumeEstimationPlugin"
+    type="DustPlumeEstimationPlugin"
+    base_class_type="DustPlumeEstimationPluginBase">
+  </class>
+</library>
