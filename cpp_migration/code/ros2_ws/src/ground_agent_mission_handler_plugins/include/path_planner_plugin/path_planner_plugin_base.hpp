@@ -11,12 +11,9 @@ using SendGoalOptions = rclcpp_action::Client<RequestPathPlan>::SendGoalOptions;
 
 class PathPlannerPluginBase {
 public:
-    
     virtual void initialise(const rclcpp::Node::SharedPtr & node) = 0;
     virtual void plan_path(
         RequestPathPlan::Goal goal, SendGoalOptions options) = 0;
-
-
 
     virtual ~PathPlannerPluginBase() = default;
 

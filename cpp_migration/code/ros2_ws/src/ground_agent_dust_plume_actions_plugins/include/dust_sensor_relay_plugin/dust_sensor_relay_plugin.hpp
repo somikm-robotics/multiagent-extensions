@@ -11,6 +11,14 @@
 namespace transportMsgs = transport_interfaces::msg;
 
 class DustSensorRelayPlugin : public DustSensorRelayPluginBase {
+public:
+    DustSensorRelayPlugin()=default;
+
+    void initialise(const rclcpp::Node::SharedPtr & node) override;
+    void publishDustSensorResult() override;
+    
+    ~DustSensorRelayPlugin() = default;
+
 private:
 
     // Publishers
@@ -26,12 +34,4 @@ private:
     bool startPublish_;
 
     void sensorCallback(const transportMsgs::DustSensorResult dustSensorResultMsg);
-    
-public:
-    DustSensorRelayPlugin()=default;
-
-    void initialise(const rclcpp::Node::SharedPtr & node) override;
-    void publishDustSensorResult() override;
-    
-    ~DustSensorRelayPlugin() = default;
 };

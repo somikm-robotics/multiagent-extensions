@@ -14,6 +14,7 @@
 
 #include "transport_interfaces/msg/mission_completed.hpp"
 #include "transport_interfaces/srv/orbit_hazard.hpp"
+#include "transport_interfaces/msg/mission_status.hpp"
 #include "shared_infrastructure/data.hpp"
 #include "shared_infrastructure/enums.hpp"
 
@@ -26,12 +27,22 @@ using OrbitHazard = transport_interfaces::srv::OrbitHazard;
 
 class OrbitHazardManagerPlugin : public OrbitHazardManagerPluginBase {
 
-private:
+public:
+    OrbitHazardManagerPlugin()=default;
+
+    virtual void initialise(const rclcpp::Node::SharedPtr & node) override;
+
+    virtual void doHazardOrbit(
+        std::shared_ptr<OrbitHazard::Request> request) override = 0;
+
+    ~OrbitHazardManagerPlugin() override = default;
+
 
 protected:
     // publishers
     rclcpp::Publisher<transportMsgs::MissionCompleted>::SharedPtr orbitCompletedPub_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr twistPub_;
+    rclcpp::Publisher<transportMsgs::MissionStatus>::SharedPtr stagingCompletedPub_;
 
     // subscriptions
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odomSub_;
@@ -81,11 +92,9 @@ protected:
     //methods
     void navigateToStagingPose(std::string rosBagDir);
     std::tuple<float, float> calculateRadiusAndBearing();
-   // std::optional<DistanceWithCoOrds> calculateStagingDistance();
-   // std::optional<SimplePose> computeStagingPose();
     std::optional<geometry_msgs::msg::TransformStamped> lookupTransform();
     void populateOrientation(geometry_msgs::msg::PoseStamped& pose);
-    void shutdownGracefully();
+    void cleanup();
     void publishOrbitCompleted(bool success);
     void restart();
     
@@ -95,16 +104,8 @@ protected:
     void doRadialOut(const float& radialError, const float& yawError);
     void doTangentAlign(const float& bearing, const float& yawError);
     std::string getLogMessage(float yawError, geometry_msgs::msg::Twist twist, std::optional<float> radialError = std::nullopt);
+    
+    void startCamera();
 
     virtual void startOrbit() = 0;
-   
-public:
-    OrbitHazardManagerPlugin()=default;
-
-    virtual void initialise(const rclcpp::Node::SharedPtr & node) override;
-
-    virtual void doHazardOrbit(
-        std::shared_ptr<OrbitHazard::Request> request) override = 0;
-
-    ~OrbitHazardManagerPlugin() override = default;
 };

@@ -6,10 +6,8 @@
 
 #include "path_planner_plugin/path_planner_plugin.hpp"
 
+// TODO: implementation later
 class AStarPathPlannerPlugin : public PathPlannerPlugin {
-
-
-private:
 
 public:
     AStarPathPlannerPlugin();
@@ -18,4 +16,6 @@ public:
             SendGoalOptions options) override;
 
     ~AStarPathPlannerPlugin() override = default;
+
+private:    
 };

@@ -1,25 +1,28 @@
 #include "orbit_hazard_plugin/twist_commander_orbit_hazard_plugin.hpp"
 #include "agent_utils.hpp"
 
-TwistCommanderOrbitHazardPlugin::TwistCommanderOrbitHazardPlugin() 
-{
-	accum_ = 0;
-}
-
 void TwistCommanderOrbitHazardPlugin::doHazardOrbit(std::shared_ptr<OrbitHazard::Request> request)
 {
 	setFromRequestParams(request);
     navigateToStagingPose(configParams_.nav2PluginOrbitHazardRosbagDir);
-    if(stagingCompleted_) {
+    
+	if(stagingCompleted_) {
+		orbitMode_ = OrbitMode::ORBIT;
+		this->startOrbit();
+	}
+		
+}
+
+void TwistCommanderOrbitHazardPlugin::startOrbit()
+{
+	if(stagingCompleted_) {
+		orbitMode_ = OrbitMode::ORBIT;
+		
+		startCamera();
 		calculateAndSetOrbitingParameters();
 		orbitTimer_ = node_->create_wall_timer(std::chrono::duration<double>(1/configParams_.cmdRateHz),
                                              std::bind(&TwistCommanderOrbitHazardPlugin::orbitLoop, this));  
-        this->startOrbit();
-	}
-}
-void TwistCommanderOrbitHazardPlugin::startOrbit()
-{
-	// intentionally blank
+	}     
 }
 
 void TwistCommanderOrbitHazardPlugin::calculateAndSetOrbitingParameters()
@@ -32,9 +35,11 @@ void TwistCommanderOrbitHazardPlugin::calculateAndSetOrbitingParameters()
 
 void TwistCommanderOrbitHazardPlugin::orbitLoop()
 {
+//	RCLCPP_INFO(node_->get_logger(), "In Orbit loop");
 	if(!currentYaw_.has_value() || !inProgress_) 
         return;
 
+	//RCLCPP_INFO(node_->get_logger(), "In Orbit loop 2");
 	tick_++;
 	auto [ radius, bearing] = calculateRadiusAndBearing();
 	auto desiredYaw = bearing - M_PI/2;
@@ -45,13 +50,14 @@ void TwistCommanderOrbitHazardPlugin::orbitLoop()
 
 void TwistCommanderOrbitHazardPlugin::doOrbit(const float &bearing, const float &yawError, const float &currentRadius)
 {
+	RCLCPP_INFO(node_->get_logger(), "In do Orbit - %s", AgentUtils::toOrbitModeStr(orbitMode_).c_str());
 	if(previousBearing_.has_value()) {
 		auto dtheta = AgentUtils::normaliseAngle(bearing - previousBearing_.value());
-		accum_+= -dtheta;
+		accumulator_+= -dtheta;
 	}
 	previousBearing_ = bearing;
 
-	if(accum_ >= 2 * M_PI) {
+	if(accumulator_ >= 2 * M_PI) {
 		geometry_msgs::msg::Twist twist;
 		twistPub_->publish(twist);    // stop once
 		RCLCPP_INFO(node_->get_logger(), "Orbit complete - exiting.");
@@ -59,7 +65,7 @@ void TwistCommanderOrbitHazardPlugin::doOrbit(const float &bearing, const float 
 		if(!orbitTimer_->is_canceled())
 			orbitTimer_->cancel();
 		publishOrbitCompleted(true);
-		shutdownGracefully();
+		cleanup();
 	}
 
 	// FEED‑FORWARD + RADIAL‑P CONTROLLER  (CW orbit, ROS +z is CCW)
@@ -89,6 +95,7 @@ void TwistCommanderOrbitHazardPlugin::doOrbit(const float &bearing, const float 
 	twistPub_->publish(twist);		
 	
 	if(tick_ % configParams_.logEveryNTimerTicks == 0) {
+		//RCLCPP_INFO(node_->get_logger(), "Orbit mode in orbit loop: %s", AgentUtils::toOrbitModeStr(orbitMode_).c_str());
         RCLCPP_INFO_STREAM(node_->get_logger(), getLogMessage(yawError, twist, radialError));
     }
 }

@@ -15,6 +15,23 @@ class DustPlumeSensorPlugin
           public ig::ISystemPreUpdate,
           public ig::ISystemPostUpdate
 {
+
+public:
+     /* --------- ISystemConfigure (called once, plume model entity) ---- */
+    void Configure(const ig::Entity &_entity,
+                   const std::shared_ptr<const sdf::Element> &_sdf,
+                   ig::EntityComponentManager &,
+                   ig::EventManager &) override;
+
+    /* --------- Lazy ROS init + entity resolve ------------------------ */
+    void PreUpdate(const ig::UpdateInfo &,
+                   ig::EntityComponentManager &ecm) override;
+
+    /* --------- Publish dust packet every step ------------------------ */
+    void PostUpdate(const ig::UpdateInfo &,
+                    const ig::EntityComponentManager &ecm) override;
+
+
 private:
   // constants
   inline static const float scalingConstant_{-0.003};
@@ -40,19 +57,6 @@ private:
     // methods
     double getMaximumOpacity(const ignition::math::Vector3d &p, const ignition::math::Pose3d& plumePose) const;
 
-public:
-     /* --------- ISystemConfigure (called once, plume model entity) ---- */
-    void Configure(const ig::Entity &_entity,
-                   const std::shared_ptr<const sdf::Element> &_sdf,
-                   ig::EntityComponentManager &,
-                   ig::EventManager &) override;
 
-    /* --------- Lazy ROS init + entity resolve ------------------------ */
-    void PreUpdate(const ig::UpdateInfo &,
-                   ig::EntityComponentManager &ecm) override;
-
-    /* --------- Publish dust packet every step ------------------------ */
-    void PostUpdate(const ig::UpdateInfo &,
-                    const ig::EntityComponentManager &ecm) override;
 
 };

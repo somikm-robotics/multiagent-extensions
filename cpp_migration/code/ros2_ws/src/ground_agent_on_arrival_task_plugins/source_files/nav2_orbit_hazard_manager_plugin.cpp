@@ -5,18 +5,26 @@
 
 using Parameter = rcl_interfaces::msg::Parameter;
 
-Nav2OrbitHazardManagerPlugin::Nav2OrbitHazardManagerPlugin()
+
+void Nav2OrbitHazardManagerPlugin::initialise(const rclcpp::Node::SharedPtr &node)
 {
-   // lastCaptureDegree_ = 0.0;
+    
+    OrbitHazardManagerPlugin::initialise(node);
+    RCLCPP_INFO(node_->get_logger(), "OrbitHazardManagerPlugin initialised");
+
+    lastCaptureDegree_ = 0.0;
     orbitDone_ = false;
 
     // subscriptions
-    // orbitAngleSub_ = node->create_subscription<float>(configParams_.hazardOrbitAngleTopic, 10, [this](float msg) {
-    //     this->orbitAngleCallback(msg);
-    // });
+    orbitAngleSub_ = node_->create_subscription<std_msgs::msg::Float32>(configParams_.hazardOrbitAngleTopic, 10, 
+                                                [this](const std_msgs::msg::Float32& angleMsg) {
+        this->orbitAngleCallback(angleMsg);
+    });
 
-    orbitDoneSub_ = node_->create_subscription<bool>(configParams_.hazardOrbitDoneTopic, 10, [this](bool msg){
-        this->orbitDoneCallback(msg);
+    orbitDoneSub_ = node_->create_subscription<std_msgs::msg::Bool>(
+                        configParams_.hazardOrbitDoneTopic, 10, 
+                            [this](const std_msgs::msg::Bool& doneMsg){
+                                this->orbitDoneCallback(doneMsg);
     });
     
     // client
@@ -24,20 +32,27 @@ Nav2OrbitHazardManagerPlugin::Nav2OrbitHazardManagerPlugin()
     followPathActionClient_ = rclcpp_action::create_client<FollowPath>(node_, "/follow_path");
    // navigateToPoseActionClient_ = rclcpp_action::create_client<NavigateToPose>(node, "navigate_to_pose");
 
+   RCLCPP_INFO(node_->get_logger(), "Nav2OrbitHazardManagerPlugin initialised");
 }
 
-void Nav2OrbitHazardManagerPlugin::doHazardOrbit(std::shared_ptr<OrbitHazard::Request> request)
+void Nav2OrbitHazardManagerPlugin::doHazardOrbit(std::shared_ptr<OrbitHazard::Request> request) 
 {
     setFromRequestParams(request);
     navigateToStagingPose(configParams_.nav2PluginOrbitHazardRosbagDir);
+    
     if(stagingCompleted_) 
         this->startOrbit();
 }
 
 void Nav2OrbitHazardManagerPlugin::startOrbit()
 {
+    RCLCPP_INFO(node_->get_logger(), "In start orbit");
+    
     if(stagingCompleted_) 
+    {
+        startCamera();
         return this->setOrbitParams();
+    }
 }
 
 void Nav2OrbitHazardManagerPlugin::setOrbitParams()
@@ -148,10 +163,18 @@ void Nav2OrbitHazardManagerPlugin::followPathGoalResponse(GoalHandleFollowPath::
 void Nav2OrbitHazardManagerPlugin::followPathResult(const GoalHandleFollowPath::WrappedResult &wrappedResult)
 {
     try {
+        AgentUtils::stopRosbag(bagProc_, bagErr_);
         auto result = wrappedResult.result->result;
         auto errorCode = wrappedResult.result->error_code;
+        if(wrappedResult.code == rclcpp_action::ResultCode::SUCCEEDED 
+            && errorCode == 0)
+            {
+                orbitDone_ = true;
+            }
         RCLCPP_INFO_STREAM(node_->get_logger(),"FollowPath finished with status: " << errorCode);
-        this->shutdownGracefully();
+
+
+        this->cleanup();
 
     } catch(const std::runtime_error& ex) {
 
@@ -159,9 +182,17 @@ void Nav2OrbitHazardManagerPlugin::followPathResult(const GoalHandleFollowPath::
     }
 }
 
-void Nav2OrbitHazardManagerPlugin::orbitDoneCallback(bool msg)
+
+void Nav2OrbitHazardManagerPlugin::orbitAngleCallback(const std_msgs::msg::Float32& angleMsg)
 {
-    if(!msg || orbitDone_)
+    if((angleMsg.data - lastCaptureDegree_) >= (configParams_.hazardCaptureIntervalDegree - 1e6)) {
+        lastCaptureDegree_ = angleMsg.data;
+    }
+}
+
+void Nav2OrbitHazardManagerPlugin::orbitDoneCallback(const std_msgs::msg::Bool& doneMsg) 
+{
+    if(!doneMsg.data || orbitDone_)
         return;
     orbitDone_ = true;
     RCLCPP_INFO(node_->get_logger(), "Orbit done received. Cancelling FollowPath to return to normal navigation.");
@@ -179,7 +210,7 @@ void Nav2OrbitHazardManagerPlugin::cancelDoneCallback(rclcpp_action::Client<Foll
     RCLCPP_INFO(node_->get_logger(), "Orbit complete. Exiting Orbiting_Manager.");
 
     publishOrbitCompleted(false);
-    shutdownGracefully();
+    cleanup();
 }
 
 std::optional<nav_msgs::msg::Path> Nav2OrbitHazardManagerPlugin::makeMinimalPathInMap()
@@ -211,7 +242,7 @@ void Nav2OrbitHazardManagerPlugin::cancelFollowPathAndExit()
 {
     if(!activeGoalHandleFollowPath_) {
         RCLCPP_WARN(node_->get_logger(), "No active FollowPath goal to cancel. Exiting anyway.");
-        this->shutdownGracefully();
+        this->cleanup();
         return;
     }
 
@@ -220,15 +251,8 @@ void Nav2OrbitHazardManagerPlugin::cancelFollowPathAndExit()
                                                           this, std::placeholders::_1 ));
 }
 
-
+// commented deliberately - will be removed only after e2e testing
 /*
-
-void Nav2OrbitHazardManagerPlugin::orbitAngleCallback(const float& msg)
-{
-    if((msg - lastCaptureDegree_) >= (configParams_.hazardCaptureIntervalDegree - 1e6)) {
-        lastCaptureDegree_ = msg;
-    }
-}
 
 void Nav2OrbitHazardManagerPlugin::navigateToStagingPose()
 {

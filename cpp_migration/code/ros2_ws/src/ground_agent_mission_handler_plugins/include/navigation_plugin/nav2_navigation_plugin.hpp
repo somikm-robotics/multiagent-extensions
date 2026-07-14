@@ -1,3 +1,5 @@
+#pragma once
+
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "nav2_msgs/action/follow_waypoints.hpp"
@@ -14,6 +16,13 @@ using FollowWaypoints = nav2_msgs::action::FollowWaypoints;
 using GoalHandle = rclcpp_action::ClientGoalHandle<FollowWaypoints>;
 
 class Nav2NavigationPlugin : public NavigationPluginBase {
+public:
+    Nav2NavigationPlugin()=default;
+
+    void initialise(const rclcpp::Node::SharedPtr & node) override;
+    void handleNavigation(std::shared_ptr<Navigate::Request> request) override;
+
+    ~Nav2NavigationPlugin() = default;
 
 private:
     // publishers
@@ -34,13 +43,4 @@ private:
     // variables
     float serviceTimeout_;
     std::string hazardType_;
-    
-
-public:
-    Nav2NavigationPlugin()=default;
-
-    void initialise(const rclcpp::Node::SharedPtr & node) override;
-    void handleNavigation(std::shared_ptr<Navigate::Request> request) override;
-
-    ~Nav2NavigationPlugin() = default;
 };

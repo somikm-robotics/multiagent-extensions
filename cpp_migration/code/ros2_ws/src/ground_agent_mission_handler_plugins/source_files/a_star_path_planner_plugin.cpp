@@ -1,5 +1,5 @@
-#include "a_star_path_planner_plugin.h"
+#include "path_planner_plugin/a_star_path_planner_plugin.hpp"
 
-void AStarPathPlannerPlugin::plan_path(RequestPathPlan::Request request, RequestPathPlan::Response response)
+void AStarPathPlannerPlugin::plan_path(RequestPathPlan::Goal request, SendGoalOptions options)
 {
 }

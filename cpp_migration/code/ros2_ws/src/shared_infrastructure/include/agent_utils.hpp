@@ -26,14 +26,6 @@ namespace bp = boost::process;
 using PoseStamped = geometry_msgs::msg::PoseStamped;
 
 class AgentUtils {
-private:
-    inline static const std::string CONFIG_PATH = R"(/root/ros2_ws/src/shared_infrastructure/config/config.json)";    
-    static std::map<HazardType, SimplePose> hazardPoses_;
-    
-    static nlohmann::json getConfig();
-    static nlohmann::json& loadConfig();
-    static float getStandOffRadius(const HazardType hazardType);
-    static void loadHazardPoses();  
     
 public:
     
@@ -111,7 +103,14 @@ public:
 
         return fullPath;
     }
-
+private:
+    inline static const std::string CONFIG_PATH = R"(/root/ros2_ws/src/shared_infrastructure/config/config.json)";    
+    static std::map<HazardType, SimplePose> hazardPoses_;
+    
+    static nlohmann::json getConfig();
+    static nlohmann::json& loadConfig();
+    static float getStandOffRadius(const HazardType hazardType);
+    static void loadHazardPoses();  
 
 };
 

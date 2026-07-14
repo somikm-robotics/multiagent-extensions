@@ -16,7 +16,16 @@ using GoalHandle = rclcpp_action::ClientGoalHandle<ComputePathToPose>;
 using PoseStamped = geometry_msgs::msg::PoseStamped;
 
 class Nav2PathPlannerPlugin : public PathPlannerPlugin {
+public:
+    
+        Nav2PathPlannerPlugin() = default;
 
+        void initialise(const rclcpp::Node::SharedPtr & node) override;
+        
+        void plan_path(RequestPathPlan::Goal request,
+            SendGoalOptions options) override;
+
+        ~Nav2PathPlannerPlugin() override = default;
 
 private:
     //Nav2 client
@@ -36,15 +45,4 @@ private:
     inline static const float SPACING = 2.0;
     inline static const float EUCLID = 1e-3;
     inline static const float FIRSTPOSEDIFFERENCE = 0.05;
-
-public:
-    
-        Nav2PathPlannerPlugin() = default;
-
-        void initialise(const rclcpp::Node::SharedPtr & node) override;
-        
-        void plan_path(RequestPathPlan::Goal request,
-            SendGoalOptions options) override;
-
-        ~Nav2PathPlannerPlugin() override = default;
 };

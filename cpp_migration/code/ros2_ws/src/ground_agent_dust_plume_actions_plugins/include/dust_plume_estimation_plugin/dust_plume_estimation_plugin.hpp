@@ -19,6 +19,15 @@ namespace transportMsgs = transport_interfaces::msg;
 
 class DustPlumeEstimationPlugin : public DustPlumeEstimationPluginBase {
 
+public:
+    DustPlumeEstimationPlugin()=default;
+
+    void initialise(const rclcpp::Node::SharedPtr & node) override;
+
+    void estimatePlumeDensity(std::shared_ptr<PlumeDensity::Request> request) override;
+    
+    ~DustPlumeEstimationPlugin() = default;
+
 private:
 
     inline static const std::string CAMERA_TOPIC {"/world/mining_world/model/agilex_diff_drive/link/base_link/sensor/rgb_cam/image"};
@@ -47,13 +56,4 @@ private:
     //methods
     SeverityLevel computeSeverityLevel(float density);
     void processResponse(rclcpp::Client<DensityRegressor>::SharedFuture future);
-
-public:
-    DustPlumeEstimationPlugin()=default;
-
-    void initialise(const rclcpp::Node::SharedPtr & node) override;
-
-    void estimatePlumeDensity(std::shared_ptr<PlumeDensity::Request> request) override;
-    
-    ~DustPlumeEstimationPlugin() = default;
 };

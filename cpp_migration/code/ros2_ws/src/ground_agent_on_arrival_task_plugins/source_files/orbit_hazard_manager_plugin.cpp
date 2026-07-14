@@ -6,11 +6,14 @@
 void OrbitHazardManagerPlugin::initialise(const rclcpp::Node::SharedPtr &node)
 {
     node_ = node;
+   // RCLCPP_INFO(node_->get_logger(), "in orbit initialise");
 
     // Publishers
     orbitCompletedPub_ = node->create_publisher<transportMsgs::MissionCompleted>(
         "orbit_completed", 10);
     twistPub_ = node->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
+    stagingCompletedPub_ = node->create_publisher<transportMsgs::MissionStatus>(
+                                    "staging_completed", 10);
 
     // subscription
     odomSub_ = node->create_subscription<nav_msgs::msg::Odometry>(
@@ -22,7 +25,7 @@ void OrbitHazardManagerPlugin::initialise(const rclcpp::Node::SharedPtr &node)
     stagingY_ = 0.0;
     stagingYaw_ = 0.0;
 
-    configParams_ = AgentUtils::getOrbitHazardParams();
+    
 	previousBearing_ = std::nullopt;
 	orbitMode_ = OrbitMode::NONE;
 	tick_ = 0;
@@ -33,8 +36,12 @@ void OrbitHazardManagerPlugin::initialise(const rclcpp::Node::SharedPtr &node)
     stagingCompleted_ = false;
     inProgress_ = false;
     orbitCompleted_ = false;
-    serviceTimeout_ = AgentUtils::getServiceTimeoutFromConfig();
 
+    //RCLCPP_INFO(node_->get_logger(), "in orbit initialise - pre config");
+    configParams_ = AgentUtils::getOrbitHazardParams();
+    RCLCPP_INFO(node_->get_logger(), "in orbit initialise - got config - angular tol: %f", configParams_.angularTolerance);
+    serviceTimeout_ = AgentUtils::getServiceTimeoutFromConfig();
+    //RCLCPP_INFO(node_->get_logger(), "OrbitHazardManagerPlugin initialised");
 }
 
 void OrbitHazardManagerPlugin::restart()
@@ -56,6 +63,7 @@ void OrbitHazardManagerPlugin::odomCallback(const nav_msgs::msg::Odometry& msg)
     pose.pose = msg.pose.pose;
 
     auto transformStampedOpt = lookupTransform();
+   // RCLCPP_INFO(node_->get_logger(), "looked up transform %s", transformStampedOpt.has_value() ? "True" : "False");
     if(!transformStampedOpt.has_value())
         return;
     
@@ -72,7 +80,18 @@ void OrbitHazardManagerPlugin::navigateToStagingPose(std::string rosBagDir)
         if(!stagingTimer_->is_canceled()) {
             stagingTimer_->cancel();
         }
-        return;
+
+        std::string msg = "Staging completed! Ready to orbit";
+        
+        transportMsgs::MissionStatus missionStatusMsg;
+        missionStatusMsg.hazard_type = AgentUtils::toHazardTypeString(hazardType_);
+        missionStatusMsg.message = msg;
+        missionStatusMsg.success = true;
+        stagingCompletedPub_->publish(missionStatusMsg);
+        RCLCPP_INFO(node_->get_logger(), "Published: %s",  msg.c_str());
+        orbitMode_ = OrbitMode::ORBIT;  
+        this->startOrbit(); 
+        return;        
     }
     
     bagDir_ = rosBagDir;
@@ -88,7 +107,8 @@ void OrbitHazardManagerPlugin::navigateToStagingPose(std::string rosBagDir)
 
 std::tuple<float, float> OrbitHazardManagerPlugin::calculateRadiusAndBearing()
 {
-        // geometry
+    // geometry
+   // RCLCPP_INFO(node_->get_logger(), "x: %f y: %f hazardX: %f hazardY: %f", currentX_, currentY_, hazardCenterPointX_, hazardCenterPointY_);
     auto dx = currentX_- hazardCenterPointX_;
     auto dy = currentY_ - hazardCenterPointY_;
     auto radius = hypot(dx, dy);
@@ -106,15 +126,22 @@ void OrbitHazardManagerPlugin::setFromRequestParams(std::shared_ptr<OrbitHazard:
     auto patchHalfDiagonal = hypot(estimatedHazardDiameter_/2, estimatedHazardDiameter_/2);
 
     radius_ = patchHalfDiagonal + configParams_.cameraClear + configParams_.cameraOffset;
+    RCLCPP_INFO(node_->get_logger(), "radius: %f", radius_);
 }
 
 void OrbitHazardManagerPlugin::stagingLoop()
 {
+    
     if(!currentYaw_.has_value() || !inProgress_) 
         return;
 
-    if(stagingCompleted_ && !stagingTimer_->is_canceled())
+    if(stagingCompleted_ && !stagingTimer_->is_canceled()) {
+        RCLCPP_INFO(node_->get_logger(), "returning from staging loop");
         stagingTimer_->cancel();
+        this->navigateToStagingPose(bagDir_);
+        return;
+    }
+        
 
     tick_++;
 
@@ -133,18 +160,25 @@ void OrbitHazardManagerPlugin::stagingLoop()
     if(orbitMode_ == OrbitMode::RADIAL_IN) {
         desiredYaw = AgentUtils::normaliseAngle(bearing + M_PI); // R → C  (inwards) - towards centre
     } else if(orbitMode_ == OrbitMode::RADIAL_OUT) {
-        desiredYaw = AgentUtils::normaliseAngle(bearing); // away from centre
+        desiredYaw = AgentUtils::normaliseAngle(bearing); // away from centre 
+    } else {
+        desiredYaw = bearing - M_PI/2;
     }
+
+
     
     auto yawError = AgentUtils::normaliseAngle(desiredYaw - currentYaw_.value());
-    if(tick_ < 10) {
+    if(tick_ < 10000) {
         RCLCPP_INFO_STREAM(node_->get_logger(), 
         "RAW pos = ("
         << std::fixed << std::setprecision(2)
         << std::showpos << currentX_ << ","
         << currentY_ << ") "
         << "rad = " << radius
-        << " err = " << (radius - radius_));
+        << " err = " << (radius - radius_)
+        << " current yaw = " << currentYaw_.value()
+        << " desired yaw =" << desiredYaw
+        << " mode = " << AgentUtils::toOrbitModeStr(orbitMode_));
     }
 
     // sign flip because CW is positive for us
@@ -175,6 +209,7 @@ void OrbitHazardManagerPlugin::stagingLoop()
 
 void OrbitHazardManagerPlugin::doRadialIn(const float &radialError, const float &yawError)
 {
+    RCLCPP_INFO(node_->get_logger(), "Rad err abs: %f Tol: %f", abs(radialError), configParams_.approachTolerance);
     if(abs(radialError) < configParams_.approachTolerance) {
         orbitMode_ = OrbitMode::TANGENT_ALIGN;
         RCLCPP_INFO(node_->get_logger(), "RADIAL‑IN complete → TANGENT_ALIGN");
@@ -190,11 +225,11 @@ void OrbitHazardManagerPlugin::doRadialIn(const float &radialError, const float 
     if(tick_ % configParams_.logEveryNTimerTicks == 0) {
         RCLCPP_INFO_STREAM(node_->get_logger(), getLogMessage(yawError, twist, radialError));
     }
-    
 }
 
 void OrbitHazardManagerPlugin::doRadialOut(const float &radialError, const float &yawError)
 {
+    RCLCPP_INFO(node_->get_logger(), "Rad err abs: %f Tol: %f", abs(radialError), configParams_.approachTolerance);
     if(abs(radialError) < configParams_.approachTolerance) {
         orbitMode_ = OrbitMode::TANGENT_ALIGN;
         RCLCPP_INFO(node_->get_logger(), "RADIAL‑OUT complete → TANGENT_ALIGN");
@@ -217,17 +252,12 @@ void OrbitHazardManagerPlugin::doRadialOut(const float &radialError, const float
 
 void OrbitHazardManagerPlugin::doTangentAlign(const float &bearing, const float &yawError)
 {
+
     if (abs(yawError) < (configParams_.angularTolerance * M_PI / 180.0)) {
-        auto currentTimeStamp = AgentUtils::getCurrentTimeFormatString();
-        auto bagDir = AgentUtils::getFolderPathStr(bagDir_, "bag_" + currentTimeStamp);
-        RCLCPP_INFO_STREAM(node_->get_logger(), "TANGENT_ALIGN → Starting Ros Bag..." << bagDir);
-        auto bagReturn = AgentUtils::startRosbag(bagDir);
-        bagProc_ = std::move(std::get<0>(bagReturn));
-        bagErr_ = std::move(std::get<1>(bagReturn));
-        RCLCPP_INFO(node_->get_logger(), "TANGENT_ALIGN → Ros Bag started...");
         stagingCompleted_ = true;
         previousBearing_ = bearing;
         RCLCPP_INFO(node_->get_logger(), "TANGENT_ALIGN complete...back to the plugin for orbiting");
+        return;
     }
 
     geometry_msgs::msg::Twist twist;
@@ -235,6 +265,9 @@ void OrbitHazardManagerPlugin::doTangentAlign(const float &bearing, const float 
     twistPub_->publish(twist);
 
     if(tick_ % configParams_.logEveryNTimerTicks == 0) {
+        RCLCPP_INFO_STREAM(node_->get_logger(), "condition met ? " 
+                                << abs(yawError) << " " << configParams_.angularTolerance << " " 
+                                <<  (configParams_.angularTolerance * M_PI / 180.0));
         RCLCPP_INFO_STREAM(node_->get_logger(), getLogMessage(yawError, twist));
     }
     return;
@@ -258,6 +291,19 @@ std::string OrbitHazardManagerPlugin::getLogMessage(float yawError, geometry_msg
 
 }
 
+void OrbitHazardManagerPlugin::startCamera()
+{
+    auto currentTimeStamp = AgentUtils::getCurrentTimeFormatString();
+    auto orbitModeStr = AgentUtils::toOrbitModeStr(orbitMode_);
+    auto bagDir = AgentUtils::getFolderPathStr(bagDir_, "bag_" + currentTimeStamp);
+    RCLCPP_INFO_STREAM(node_->get_logger(), orbitModeStr.c_str()
+                                     << " → Starting Ros Bag..." << bagDir);
+    auto bagReturn = AgentUtils::startRosbag(bagDir);
+    bagProc_ = std::move(std::get<0>(bagReturn));
+    bagErr_ = std::move(std::get<1>(bagReturn));
+    RCLCPP_INFO(node_->get_logger(),  "%s → Ros Bag started...", orbitModeStr.c_str());
+}
+
 std::optional<geometry_msgs::msg::TransformStamped> OrbitHazardManagerPlugin::lookupTransform()
 {
     try {
@@ -265,14 +311,16 @@ std::optional<geometry_msgs::msg::TransformStamped> OrbitHazardManagerPlugin::lo
         if(!tfBuffer_->canTransform(configParams_.mapFrame, configParams_.agilexBaseFrame,
                                     rclcpp::Time(), 
                                     rclcpp::Duration::from_seconds(configParams_.tfTimeoutSeconds))) 
+        {
             RCLCPP_WARN_STREAM(node_->get_logger(), "TF unavailable when computing staging pose");
             inProgress_ = false;
             return std::nullopt;
-
-            auto tf = tfBuffer_->lookupTransform(configParams_.mapFrame, configParams_.agilexBaseFrame,
-                                        rclcpp::Time(), 
-                                        rclcpp::Duration::from_seconds(configParams_.tfTimeoutSeconds));
-            return tf;
+        }
+     //   RCLCPP_INFO(node_->get_logger(), "can transform...looking");
+        auto tf = tfBuffer_->lookupTransform(configParams_.mapFrame, configParams_.agilexBaseFrame,
+                                    rclcpp::Time(), 
+                                    rclcpp::Duration::from_seconds(configParams_.tfTimeoutSeconds));
+        return tf;
     } catch(const std::runtime_error& ex) {
 
             RCLCPP_ERROR_STREAM(node_->get_logger(), "Exception occurred whilst looking up transform-" << ex.what());
@@ -294,11 +342,10 @@ void OrbitHazardManagerPlugin::populateOrientation(geometry_msgs::msg::PoseStamp
     pose.pose.orientation.w = q.w();
 }
 
-void OrbitHazardManagerPlugin::shutdownGracefully()
+void OrbitHazardManagerPlugin::cleanup()
 {
     if(!tfIssuesTimer_->is_canceled())
         tfIssuesTimer_->cancel();
-    //rclcpp::shutdown();
 }
 
 void OrbitHazardManagerPlugin::publishOrbitCompleted(bool success)
@@ -309,6 +356,8 @@ void OrbitHazardManagerPlugin::publishOrbitCompleted(bool success)
     this->orbitCompleted_ = true;
 }
 
+
+// commented deliberately - will be removed only after e2e testing
 /* std::optional<SimplePose> OrbitHazardManagerPlugin::computeStagingPose()
 {
     // calculate staging istance

@@ -8,12 +8,19 @@
 
 #include "orbit_hazard_plugin/orbit_hazard_manager_plugin.hpp"
 
+
 class TwistCommanderOrbitHazardPlugin : public OrbitHazardManagerPlugin {
+public:
+    TwistCommanderOrbitHazardPlugin() = default;
+
+    virtual void doHazardOrbit(std::shared_ptr<OrbitHazard::Request> request) override;
+
+    ~TwistCommanderOrbitHazardPlugin() override = default;    
 
 private:
     
     // variables
-    float accum_;
+    float accumulator_{0.0f};
     rclcpp::TimerBase::SharedPtr orbitTimer_;
     float baseLinearVelocity_;
     float slowZone_;
@@ -27,11 +34,4 @@ private:
     void doOrbit(const float& bearing, const float& yawError, const float& currentRadius);
     
     virtual void startOrbit() override;
-
-public:
-    TwistCommanderOrbitHazardPlugin();
-
-    virtual void doHazardOrbit(std::shared_ptr<OrbitHazard::Request> request) override;
-
-    ~TwistCommanderOrbitHazardPlugin() override = default;
 };

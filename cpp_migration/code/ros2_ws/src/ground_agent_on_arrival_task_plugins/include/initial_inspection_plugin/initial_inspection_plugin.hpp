@@ -24,6 +24,16 @@ using InitialInspection = transport_interfaces::srv::InitialInspection;
 
 class InitialInspectionPlugin : public InitialInspectionPluginBase {
 
+public:
+    InitialInspectionPlugin()=default;
+
+    void initialise(const rclcpp::Node::SharedPtr & node) override;
+    std::shared_ptr<InitialInspection::Response> performInspection(
+        std::shared_ptr<InitialInspection::Request> request) override;
+
+    ~InitialInspectionPlugin() override = default;    
+
+
 private:
 
     // constants
@@ -51,8 +61,6 @@ private:
     // Services
     rclcpp::Service<InitialInspection>::SharedPtr initialInspectionService_;    
 
-   // cv_bridge::CvImagePtr cv_ptr_;
-
    // instance variables
     rclcpp::Node::SharedPtr node_;
     HazardType hazardType_;
@@ -64,7 +72,6 @@ private:
     std::optional<double> currentYaw_;
     geometry_msgs::msg::Twist twist_;
     bool hasSpinPub_;
-   // std::filesystem::path imageDirPath_;
     std::string outDir_;
 
     void imageCallback(const sensor_msgs::msg::Image::SharedPtr imageMsg);
@@ -72,13 +79,4 @@ private:
     void spinPublish();
     void saveImage(const cv::Mat& image);
     void stopSpin();
-
-public:
-    InitialInspectionPlugin()=default;
-
-    void initialise(const rclcpp::Node::SharedPtr & node) override;
-    std::shared_ptr<InitialInspection::Response> performInspection(
-        std::shared_ptr<InitialInspection::Request> request) override;
-
-    ~InitialInspectionPlugin() override = default;
 };

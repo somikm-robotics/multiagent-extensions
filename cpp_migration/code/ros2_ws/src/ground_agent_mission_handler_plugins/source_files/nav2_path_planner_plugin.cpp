@@ -1,22 +1,124 @@
-#include "nav2_path_planner_plugin.h"
+#include "path_planner_plugin/nav2_path_planner_plugin.hpp"
+#include <stdexcept>
+#include <chrono>
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "agent_utils.hpp"
+#include "pluginlib/class_list_macros.hpp"
 
-void Nav2PathPlannerPlugin::onPathReturn(rclcpp::Client<PathPlanResult>::SharedFuture future)
+void Nav2PathPlannerPlugin::initialise(const rclcpp::Node::SharedPtr &node)
 {
+	coreInitialise(node);
+	computePathToPoseClient_ = rclcpp_action::create_client<ComputePathToPose>(node_, "compute_path_to_pose");
 }
 
-Nav2PathPlannerPlugin::onComputePathGoalResponse(rclcpp_action::Client<nav2_msgs::action::ComputePathToPose>::SendGoalFuture future)
+void Nav2PathPlannerPlugin::onComputePathGoalResponse(GoalHandle::SharedPtr goal_handle)
 {
+	if(!goal_handle) {
+		RCLCPP_WARN_STREAM(node_->get_logger(), "ComputePathToGoal goal rejected");
+		return;
+	}	
+	RCLCPP_INFO_STREAM(node_->get_logger(), "Compute Path to pose accepted, waiting for completion");
+
+	computePathToPoseClient_->async_get_result(goal_handle, 
+								std::bind(&Nav2PathPlannerPlugin::computePathResult, this, std::placeholders::_1));
+	
+}
+
+void Nav2PathPlannerPlugin::computePathResult(const GoalHandle::WrappedResult &result)
+{
+	
+	auto path = result.result->path;
+	RCLCPP_INFO_STREAM(node_->get_logger(), "Compute Path to pose returned " << path.poses.size() << " poses");
+	auto waypoints = decimate(path, node_);
+
+//	RCLCPP_INFO_STREAM(node_->get_logger(), "Down-sampled to " << waypoints.size() << " poses");
+
+	if(!waypoints.empty() && AgentUtils::getPoseDistance(waypoints[0], path.poses[0]) < FIRSTPOSEDIFFERENCE)
+		waypoints.erase(waypoints.begin());
+
+	RCLCPP_INFO_STREAM(node_->get_logger(), "Down-sampled to " << waypoints.size() << " poses");
+
+	for (auto &w : waypoints)
+	{
+		w.header.frame_id = path.header.frame_id;
+		w.header.stamp = node_->get_clock()->now();
+	}
+	
+	auto resultMsg = std::make_shared<RequestPathPlan::Result>();
+	resultMsg->success = true;
+	resultMsg->message = "Waypoints sent";
+	resultMsg->waypoints = waypoints;
+
+	rclcpp_action::ClientGoalHandle<RequestPathPlan>::WrappedResult wrappedResult;
+	wrappedResult.code = rclcpp_action::ResultCode::SUCCEEDED;
+	wrappedResult.result = resultMsg;
+
+	if(requestOptions_.result_callback) 
+		requestOptions_.result_callback(wrappedResult);
+	
 }
 
 geometry_msgs::msg::PoseStamped Nav2PathPlannerPlugin::getPose(geometry_msgs::msg::Pose goalPose)
 {
-	return geometry_msgs::msg::PoseStamped();
+	geometry_msgs::msg::PoseStamped pose;
+	pose.header.frame_id = "map";
+	pose.pose.position.x = goalPose.position.x;
+	pose.pose.position.y = goalPose.position.y;
+	pose.pose.position.z = goalPose.position.z;
+	pose.pose.orientation.x = goalPose.orientation.x;
+	pose.pose.orientation.y = goalPose.orientation.y;
+	pose.pose.orientation.z = goalPose.orientation.z;
+	pose.pose.orientation.w = goalPose.orientation.w;
+
+	return pose;
 }
 
-void Nav2PathPlannerPlugin::sendPathPlanResult(std::vector<geometry_msgs::msg::PoseStamped>& waypoints)
+std::vector<PoseStamped> Nav2PathPlannerPlugin::decimate(nav_msgs::msg::Path path, rclcpp::Node::SharedPtr node)
 {
+	std::vector<PoseStamped> prunedWayPoints;
+	std::vector<PoseStamped> poses  = path.poses;
+    if(poses.empty()) {
+		return prunedWayPoints;
+	}
+
+	RCLCPP_INFO_STREAM(node->get_logger(), "Poses: " << poses.size());	
+
+	prunedWayPoints.push_back(path.poses.front());
+	RCLCPP_INFO_STREAM(node->get_logger(), "Pruned wayponts with 1st: " << poses.size());	
+	for(auto itr = poses.begin() + 1; itr != poses.end(); ++itr) {
+		if(AgentUtils::getPoseDistance(poses.back(), *itr) >= SPACING)
+			prunedWayPoints.push_back(*itr);
+	}
+
+	RCLCPP_INFO_STREAM(node->get_logger(), "Pruned waypoints: " << prunedWayPoints.size());	
+
+	if(AgentUtils::getPoseDistance(prunedWayPoints.back(), poses.back()) > EUCLID) 
+			prunedWayPoints.push_back(poses.back());
+
+	RCLCPP_INFO_STREAM(node->get_logger(), "[2]Pruned waypoints: "  << prunedWayPoints.size());	
+	return prunedWayPoints;
 }
 
-void Nav2PathPlannerPlugin::plan_path(RequestPathPlan::Request request, RequestPathPlan::Response response)
+void Nav2PathPlannerPlugin::plan_path(RequestPathPlan::Goal request, SendGoalOptions options)
 {
+	requestOptions_ = options;
+	try {
+		if(!computePathToPoseClient_->wait_for_action_server(std::chrono::duration<float>(serviceTimeout_))) {
+			RCLCPP_INFO_STREAM(node_->get_logger(), "Waiting for Nav2 action servers …");
+			return;
+		}
+
+		auto goalMsg = ComputePathToPose::Goal();
+		goalMsg.goal = getPose(request.goal);
+		goalMsg.use_start = false;
+		rclcpp_action::Client<ComputePathToPose>::SendGoalOptions computePathToPoseOptions;
+		computePathToPoseOptions.goal_response_callback = std::bind(&Nav2PathPlannerPlugin::onComputePathGoalResponse,
+																	this, std::placeholders::_1);
+		computePathToPoseClient_->async_send_goal(goalMsg, computePathToPoseOptions);
+
+	}catch(const std::runtime_error& ex) {
+		RCLCPP_ERROR_STREAM(node_->get_logger(), "Exception occured whilst trying to plan path to hazard" << ex.what());
+	}
+
 }
+PLUGINLIB_EXPORT_CLASS(Nav2PathPlannerPlugin, PathPlannerPluginBase)
