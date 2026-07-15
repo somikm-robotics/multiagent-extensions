@@ -5,10 +5,16 @@
 
 #include "agent_utils.hpp"
 
-void DustSensorRelayPlugin::initialise(const rclcpp::Node::SharedPtr &node) 
+DustSensorRelayPlugin::DustSensorRelayPlugin() 
+            : logger_(rclcpp::get_logger("DustSensorRelayPlugin"))
+{
+}
+
+void DustSensorRelayPlugin::initialise(const rclcpp::Node::SharedPtr &node)
 {
     startPublish_ = false;
     node_ = node;
+    //logger_ = node->get_logger();
     resultPub_ = node->create_publisher<transportMsgs::DustSensorResult>(
                         "dust_sensor_reading", 10);
 
@@ -39,11 +45,12 @@ void DustSensorRelayPlugin::sensorCallback(transportMsgs::DustSensorResult dustS
                                         });
                 
     if(availableCount >= configParams_.MinValuesAvailibity  ) {
+        dustSensorResultMsg.success = true;
         resultPub_->publish(dustSensorResultMsg);
         currentPubCtr_++;
-        RCLCPP_INFO(node_->get_logger(), "Dust detected – published reading");
+        RCLCPP_INFO(logger_, "Dust detected – published reading");
         RCLCPP_INFO_STREAM(
-            node_->get_logger(),
+            logger_,
             std::fixed
             << "PM1.0=" << std::setprecision(1) << dustSensorResultMsg.pm1_0 << " µg/m³, "
             << "PM2.5=" << std::setprecision(1) << dustSensorResultMsg.pm2_5 << " µg/m³, "

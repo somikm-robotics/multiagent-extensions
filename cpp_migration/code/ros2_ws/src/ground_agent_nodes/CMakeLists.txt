@@ -14,6 +14,8 @@ find_package(ground_agent_mission_handler_plugins REQUIRED)
 find_package(ground_agent_dust_plume_actions_plugins REQUIRED)
 find_package(shared_infrastructure REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem)
+find_package(ignition-math6 REQUIRED)
+find_package(ament_cmake_gtest REQUIRED)
 
 include_directories(
   include
@@ -72,8 +74,20 @@ ament_target_dependencies(dust_plume_actions_node
   pluginlib
 )
 
+ament_add_gtest(dust_plume_actions_node_test
+                  test/dust_plume_actions_node_test.cpp
+                  source_files/dust_plume_actions_node.cpp
+                  )
+
+ament_target_dependencies(dust_plume_actions_node_test
+  rclcpp
+  sensor_msgs
+  transport_interfaces
+  shared_infrastructure
+)                  
+
 add_executable(dust_plume_actions_node_exec
-  source_files/dust_plume_actions_node.cpp
+  source_files/dust_plume_actions_node_main.cpp
 )
 
 ament_target_dependencies(dust_plume_actions_node_exec

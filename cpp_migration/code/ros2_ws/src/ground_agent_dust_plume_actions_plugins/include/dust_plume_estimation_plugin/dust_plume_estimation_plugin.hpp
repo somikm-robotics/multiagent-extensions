@@ -20,7 +20,7 @@ namespace transportMsgs = transport_interfaces::msg;
 class DustPlumeEstimationPlugin : public DustPlumeEstimationPluginBase {
 
 public:
-    DustPlumeEstimationPlugin()=default;
+    DustPlumeEstimationPlugin();
 
     void initialise(const rclcpp::Node::SharedPtr & node) override;
 
@@ -47,7 +47,8 @@ private:
     //std::optional<float> getDensityResult(rclcpp::Client<DensityRegressor>::SharedFuture future);
 
     //variables
-    rclcpp::Node::SharedPtr node_;
+    rclcpp::Node::WeakPtr node_;
+    rclcpp::Logger logger_;
     std::optional<sensor_msgs::msg::Image> cvImageOpt_;
     bool firstImagePopulated_;
     std::optional<float> densityResult_;

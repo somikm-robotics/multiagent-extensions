@@ -10,6 +10,8 @@ find_package(ament_cmake REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(nav2_msgs REQUIRED)
 
 find_package(nav2_core REQUIRED)
 find_package(nav2_costmap_2d REQUIRED)
@@ -23,7 +25,14 @@ find_package(Boost REQUIRED COMPONENTS filesystem)
 find_package(ignition-gazebo6 REQUIRED)
 find_package(ignition-plugin1 REQUIRED)
 find_package(transport_interfaces REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(ament_index_cpp REQUIRED)
+find_package(ament_index_cpp REQUIRED)
+find_package(ignition-math6 REQUIRED)
 
+# shared infrastructure
 add_library(shared_infrastructure SHARED
   source_files/agent_utils.cpp
 )
@@ -42,6 +51,14 @@ target_link_libraries(shared_infrastructure
   Boost::boost
   Boost::filesystem
 )
+
+install(TARGETS shared_infrastructure
+  EXPORT export_shared_infrastructure
+  LIBRARY DESTINATION lib
+)
+
+ament_export_targets(export_shared_infrastructure HAS_LIBRARY_TARGET)
+
 
 #Plugins
 # orbit controller plugin
@@ -79,7 +96,6 @@ install(TARGETS
   LIBRARY DESTINATION lib
 )
 
-
 ament_export_libraries(nav2_orbit_controller_plugin)
 ament_export_targets(export_nav2_orbit_controller_plugin HAS_LIBRARY_TARGET)
 
@@ -106,11 +122,41 @@ install(TARGETS dust_plume_sensor_plugin
   LIBRARY DESTINATION lib
 )
 
+#test helpers
+add_library(test_helpers SHARED
+  source_files/test_helpers/fakes_generator.cpp
+  source_files/test_helpers/nav2_fakes_generator.cpp)
 
-install(TARGETS shared_infrastructure
-  EXPORT export_shared_infrastructure
+target_include_directories(test_helpers PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+ament_target_dependencies(test_helpers
+  rclcpp
+  tf2
+  tf2_ros
+  cv_bridge
+  ament_index_cpp
+  sensor_msgs
+  geometry_msgs
+  nav_msgs
+  transport_interfaces
+  ignition-math6
+  nav2_msgs
+)
+
+install(TARGETS test_helpers
+  EXPORT export_test_helpers
   LIBRARY DESTINATION lib
 )
+
+target_link_libraries(test_helpers
+  ignition-math6::ignition-math6
+)
+
+ament_export_targets(export_test_helpers HAS_LIBRARY_TARGET)
+ament_export_libraries(test_helpers)
 
 
 install(DIRECTORY include/
@@ -123,8 +169,6 @@ install(DIRECTORY images
 
 
 ament_export_include_directories(include)
-
-ament_export_targets(export_shared_infrastructure HAS_LIBRARY_TARGET)
 
 ament_export_dependencies(
   nav2_core
@@ -139,6 +183,10 @@ ament_export_dependencies(
   std_msgs
   ament_index_cpp
   transport_interfaces
+  tf2
+  tf2_ros
+  cv_bridge
+  sensor_msgs
 )
 
 

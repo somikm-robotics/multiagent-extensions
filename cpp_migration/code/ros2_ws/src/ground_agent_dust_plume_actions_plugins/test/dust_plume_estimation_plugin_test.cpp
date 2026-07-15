@@ -17,58 +17,12 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 
-
-#include "transport_interfaces/msg/density_estimation_result.hpp"
-#include "transport_interfaces/srv/density_regressor.hpp"
-
 #include "dust_plume_estimation_plugin/dust_plume_estimation_plugin.hpp"
+
+#include "test_helpers/fake_image_publisher_node.hpp"
 
 using namespace std::chrono_literals;
 namespace bp = boost::process;
-
-class FakeImagePubNode : public rclcpp::Node {
-public:
-    FakeImagePubNode() : Node("fake_image_pub_node") {
-        imagePub_ = this->create_publisher<sensor_msgs::msg::Image>(CAMERA_TOPIC, 10);
-        pubTimer_ = create_wall_timer(100ms, std::bind(&FakeImagePubNode::publishImage,
-                                                        this));
-    }
-
-private:
-
-    void publishImage() {
-     //   RCLCPP_INFO(this->get_logger(), "publishing image");
-        static const auto imagePath = 
-            std::filesystem::path(
-                ament_index_cpp::get_package_share_directory("shared_infrastructure"))
-            /"images"
-            /"test"
-            /"dust_plume_image.jpg";
-        
-        // RCLCPP_INFO(this->get_logger(), "image path: %s", imagePath.c_str());
-
-        cv::Mat cvImage = cv::imread(imagePath.string());
-
-        if(cvImage.empty()) {
-            RCLCPP_ERROR(this->get_logger(), "Failed to read image: %s",
-                            imagePath.string().c_str());
-            return;
-        }
-
-        cv_bridge::CvImage cvBridgeImage;
-        cvBridgeImage.header.frame_id = "camera";
-        cvBridgeImage.header.stamp = this->get_clock()->now();
-        cvBridgeImage.encoding = sensor_msgs::image_encodings::BGR8;
-        cvBridgeImage.image = cvImage;
-
-        imagePub_ -> publish(*cvBridgeImage.toImageMsg());
-       // RCLCPP_INFO(this->get_logger(), "published image");
-    }
-
-    rclcpp::TimerBase::SharedPtr pubTimer_;
-    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr imagePub_;
-    inline static const std::string CAMERA_TOPIC {"/world/mining_world/model/agilex_diff_drive/link/base_link/sensor/rgb_cam/image"};
-};
 
 class DustPlumeEstimationPluginTest : public testing::Test {
 protected:
@@ -115,7 +69,7 @@ protected:
 TEST_F(DustPlumeEstimationPluginTest, PublishReceivedMessage) {
 
     std::atomic_bool messageReceived{false};
-    auto fakeImagePubNode = std::make_shared<FakeImagePubNode>();
+    auto fakeImagePubNode = std::make_shared<FakeImagePublisherNode>();
 
     RCLCPP_INFO(testNode_->get_logger(), "Created image publisher");
     auto estimatedDensitySub = testNode_->create_subscription<transportMsgs::DensityEstimationResult>(

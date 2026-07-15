@@ -9,3 +9,4 @@ float32 humidity       # %
 float32 temperature    # °C
 float64 density           # estimated density
 bool is_too_dense          # flag based on the density 
+bool success

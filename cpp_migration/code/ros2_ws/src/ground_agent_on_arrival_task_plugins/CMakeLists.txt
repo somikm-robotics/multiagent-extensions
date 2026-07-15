@@ -19,10 +19,8 @@ find_package(ament_cmake_gtest REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem)
+find_package(ignition-math6 REQUIRED)
 
-include_directories(
-  include
-)
 #Plugins
 # initial inspection plugin
 add_library(initial_inspection_plugin SHARED
@@ -47,7 +45,6 @@ ament_target_dependencies(initial_inspection_plugin
 
 ament_add_gtest(initial_inspection_plugin_test
   test/initial_inspection_plugin_test.cpp
-  test/test_helper.cpp
 )
 
 ament_target_dependencies(initial_inspection_plugin_test
@@ -61,9 +58,6 @@ ament_target_dependencies(initial_inspection_plugin_test
   ament_index_cpp
 )
 
-target_include_directories(initial_inspection_plugin_test PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/test/include
-)
 
 target_link_libraries(initial_inspection_plugin_test
                       initial_inspection_plugin
@@ -114,7 +108,6 @@ ament_target_dependencies(orbit_hazard_plugin
 
 ament_add_gtest(orbit_hazard_manager_plugin_tests
   test/orbit_hazard_manager_plugin_tests.cpp
-  test/test_helper.cpp
 )
 
 ament_target_dependencies(orbit_hazard_manager_plugin_tests
@@ -128,10 +121,6 @@ ament_target_dependencies(orbit_hazard_manager_plugin_tests
   rclcpp_action
   cv_bridge
   ament_index_cpp
-)
-
-target_include_directories(orbit_hazard_manager_plugin_tests PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/test/include
 )
 
 pluginlib_export_plugin_description_file(

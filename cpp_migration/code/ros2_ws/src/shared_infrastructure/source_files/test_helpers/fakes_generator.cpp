@@ -2,6 +2,7 @@
 #include "test_helpers/fake_odom_publisher_node.hpp"
 #include "test_helpers/fake_tf_publisher_node.hpp"
 #include "test_helpers/fake_image_publisher_node.hpp"
+#include "test_helpers/fake_dust_sensor_replay_publisher_node.hpp"
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <opencv2/imgcodecs.hpp>
@@ -10,7 +11,7 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
 void FakeTwistSubscriberNode::twistCallback(
-    const geometry_msgs::msg::Twist::SharedPtr twistMsg)
+    const geometry_msgs::msg::Twist::SharedPtr)
 {
     // nothing to do - intentionally left blank
 }
@@ -72,7 +73,7 @@ void FakeTFPublisherNode::broadcast()
 
     //RCLCPP_INFO(this->get_logger(), "Testing - x_: %f", x_);
     auto x = xPositions_[currentPosCtr_];
-    if(currentPosCtr_ < xPositions_.size() - 1)
+    if(currentPosCtr_ < (static_cast<int>(xPositions_.size()) - 1))
         currentPosCtr_++;
     tf.transform.translation.x = x;
     tf.transform.translation.y = 2.0;
@@ -121,4 +122,45 @@ void FakeImagePublisherNode::publishImage()
 
         imagePub_ -> publish(*cvBridgeImage.toImageMsg());
        // RCLCPP_INFO(this->get_logger(), "published image");
+}
+
+FakeDustSensorRelayPublisherNode::FakeDustSensorRelayPublisherNode() : Node("fake_dust_sensor_relay_publisher")
+{
+    dustSensorResultPub_ = this->create_publisher<transportMsgs::DustSensorResult>("/dust/agilex_diff_drive", 10);
+    pubTimer_ = this->create_wall_timer(std::chrono::seconds(1), 
+                        std::bind(&FakeDustSensorRelayPublisherNode::publishDustSensorResult, this));
+}
+double FakeDustSensorRelayPublisherNode::getMaximumOpacity(const ignition::math::Vector3d &p, const ignition::math::Pose3d &plumePose) const
+{
+    auto d = p - plumePose.Pos();
+    double r = std::hypot(d.X(), d.Y());
+    double z = std::fabs(d.Z());
+
+    if(r >= radius_ || z >= height_ / 2.0)
+        return 0.0;
+    
+    return 1.0 - (r / radius_);
+}
+
+void FakeDustSensorRelayPublisherNode::publishDustSensorResult()
+{
+    ignition::math::Vector3d point{1.0, 2.0, 3.0};    
+        ignition::math::Pose3d pose{
+            1.0, 2.0, 3.0,    // x, y, z
+            0.0, 0.0, 1.57    // roll, pitch, yaw (radians)
+        };
+        double k = getMaximumOpacity(point, pose); 
+
+        transportMsgs::DustSensorResult dustSensorResultMsg;
+        dustSensorResultMsg.pm1_0 = k * pm1Max_;
+        dustSensorResultMsg.pm2_5 = k * pm2Max_;
+        dustSensorResultMsg.pm10 = k * pm10Max_;
+        dustSensorResultMsg.tsp = dustSensorResultMsg.pm10;
+        dustSensorResultMsg.opacity = k * (1.0 - std::exp(scalingConstant_ * pm2Max_));
+        dustSensorResultMsg.wind_speed = windSpeed_;
+        dustSensorResultMsg.wind_direction = windDirDeg_;
+        dustSensorResultMsg.humidity = humidity_;
+        dustSensorResultMsg.temperature = temperature_;
+
+        dustSensorResultPub_->publish(dustSensorResultMsg);
 }

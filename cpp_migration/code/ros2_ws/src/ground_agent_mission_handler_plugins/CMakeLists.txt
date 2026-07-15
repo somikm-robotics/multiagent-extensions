@@ -12,6 +12,7 @@ find_package(nav2_core REQUIRED)
 find_package(shared_infrastructure REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem)
 find_package(ament_cmake_gtest REQUIRED)
+find_package(ignition-math6 REQUIRED)
 
 include_directories(
   include
@@ -47,6 +48,7 @@ ament_target_dependencies(nav2_navigation_plugin_test
   pluginlib
   nav2_msgs
   rclcpp_action
+  shared_infrastructure
 )
 
 target_link_libraries(nav2_navigation_plugin_test
@@ -100,6 +102,7 @@ ament_target_dependencies(nav2_path_planner_plugin_test
   pluginlib
   nav2_msgs
   rclcpp_action
+  shared_infrastructure
 )
 
 target_link_libraries(nav2_path_planner_plugin_test

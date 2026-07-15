@@ -10,63 +10,7 @@
 #include "navigation_plugin/nav2_navigation_plugin.hpp"
 #include "transport_interfaces/msg/navigation_result.hpp"
 #include "agent_utils.hpp"
-
-class FakeFollowWaypointsServer: public rclcpp::Node 
-{
-public:
-    using FollowWaypoints = nav2_msgs::action::FollowWaypoints;
-    using GoalHandle = rclcpp_action::ServerGoalHandle<FollowWaypoints>;
-
-    FakeFollowWaypointsServer() : Node("fake_follow_waypoints_server")
-    {
-        server_ = rclcpp_action::create_server<FollowWaypoints>(
-            this, "/follow_waypoints",
-            std::bind(&FakeFollowWaypointsServer::handleGoal, this,
-                std::placeholders::_1, std::placeholders::_2),
-            std::bind(&FakeFollowWaypointsServer::handleCancel, this,
-                std::placeholders::_1),
-            std::bind(&FakeFollowWaypointsServer::handleAccepted, this,
-                std::placeholders::_1));
-    }
-
-private:
-    rclcpp_action::Server<FollowWaypoints>::SharedPtr server_;
-//    rclcpp::TimerBase::SharedPtr resultTimer_;
-    
-    rclcpp_action::GoalResponse handleGoal(
-        const rclcpp_action::GoalUUID&,
-        std::shared_ptr<const FollowWaypoints::Goal>) 
-    {
-        RCLCPP_INFO(this->get_logger(), "In handle goal");
-        return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
-    }
-
-    rclcpp_action::CancelResponse handleCancel(
-        const std::shared_ptr<GoalHandle>)
-    {
-        RCLCPP_INFO(this->get_logger(), "In handle cancel");
-        return rclcpp_action::CancelResponse::ACCEPT;
-    }
-
-    void handleAccepted(const std::shared_ptr<GoalHandle> goalHandle)
-    {
-        RCLCPP_INFO(this->get_logger(), "In handle accepted");
-
-      //  RCLCPP_INFO(this->get_logger(), "handle accepted - creating result");
-
-        auto result = std::make_shared<FollowWaypoints::Result>();
-        
-        result->missed_waypoints = {};
-
-       // RCLCPP_INFO(this->get_logger(), "handle accepted - created result");
-        
-        result->missed_waypoints = {};
-       // RCLCPP_INFO(this->get_logger(), "handle accepted - set params");
-        goalHandle->succeed(result);
-        RCLCPP_INFO(this->get_logger(), "handle accepted - done");
-
-    }
-};
+#include "test_helpers/nav2/fake_nav2_follow_waypoints_server.hpp"
 
 TEST(Nav2NavigationPluginTests, PublishSuccessMessage)
 {

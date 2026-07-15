@@ -9,68 +9,13 @@
 #include <ignition/math/Pose3.hh>
 #include <ignition/math/Vector3.hh>
 
-#include "transport_interfaces/msg/dust_sensor_result.hpp"
 #include "dust_sensor_relay_plugin/dust_sensor_relay_plugin.hpp"
-
-class FakeDustSensorRelayPublisher: public rclcpp::Node 
-{
-public:
-    FakeDustSensorRelayPublisher(): Node("fake_dust_sensor_relay_publisher") {
-        dustSensorResultPub_ = this->create_publisher<transportMsgs::DustSensorResult>("/dust/agilex_diff_drive", 10);
-        pubTimer_ = this->create_wall_timer(std::chrono::seconds(1), 
-                        std::bind(&FakeDustSensorRelayPublisher::publishDustSensorResult, this));
-    }
-
-private:
-    rclcpp::Publisher<transportMsgs::DustSensorResult>::SharedPtr dustSensorResultPub_;
-    inline static const float scalingConstant_{-0.003};
-
-    double getMaximumOpacity(const ignition::math::Vector3d &p, 
-                                            const ignition::math::Pose3d &plumePose) const
-    {
-        auto d = p - plumePose.Pos();
-        double r = std::hypot(d.X(), d.Y());
-        double z = std::fabs(d.Z());
-
-        if(r >= radius_ || z >= height_ / 2.0)
-            return 0.0;
-        
-        return 1.0 - (r / radius_);
-    }
-
-    void publishDustSensorResult() {
-        ignition::math::Vector3d point{1.0, 2.0, 3.0};    
-        ignition::math::Pose3d pose{
-            1.0, 2.0, 3.0,    // x, y, z
-            0.0, 0.0, 1.57    // roll, pitch, yaw (radians)
-        };
-        double k = getMaximumOpacity(point, pose); 
-
-        transportMsgs::DustSensorResult dustSensorResultMsg;
-        dustSensorResultMsg.pm1_0 = k * pm1Max_;
-        dustSensorResultMsg.pm2_5 = k * pm2Max_;
-        dustSensorResultMsg.pm10 = k * pm10Max_;
-        dustSensorResultMsg.tsp = dustSensorResultMsg.pm10;
-        dustSensorResultMsg.opacity = k * (1.0 - std::exp(scalingConstant_ * pm2Max_));
-        dustSensorResultMsg.wind_speed = windSpeed_;
-        dustSensorResultMsg.wind_direction = windDirDeg_;
-        dustSensorResultMsg.humidity = humidity_;
-        dustSensorResultMsg.temperature = temperature_;
-
-        dustSensorResultPub_->publish(dustSensorResultMsg);
-        
-    }
-
-    rclcpp::TimerBase::SharedPtr pubTimer_;
-    double radius_{5.0}, height_{3.0};
-    double pm1Max_{220.0}, pm2Max_{550.0}, pm10Max_{900.0};
-    double windSpeed_{3.8}, windDirDeg_{120.0}, temperature_{28.0}, humidity_{38.0};
-};
+#include "test_helpers/fake_dust_sensor_replay_publisher_node.hpp"
 
 TEST(DustSensorRelayPluginTests, PublishSuccess)
 {
     auto testNode = std::make_shared<rclcpp::Node>("test_node");
-    auto fakePub = std::make_shared<FakeDustSensorRelayPublisher>();
+    auto fakePub = std::make_shared<FakeDustSensorRelayPublisherNode>();
     std::atomic_bool messageReceived{false};
     int maxCount = 3;
     std::atomic_int ctr{0};

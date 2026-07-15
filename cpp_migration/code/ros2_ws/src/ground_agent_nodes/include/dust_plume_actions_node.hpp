@@ -11,6 +11,8 @@
 #include "transport_interfaces/msg/start_mission.hpp"
 #include "transport_interfaces/msg/mission_status.hpp"
 #include "transport_interfaces/msg/mission_completed.hpp"
+#include "transport_interfaces/msg/density_estimation_result.hpp"
+#include "transport_interfaces/msg/dust_sensor_result.hpp"
 
 #include "dust_sensor_relay_plugin/dust_sensor_relay_plugin_base.hpp"
 #include "dust_plume_estimation_plugin/dust_plume_estimation_plugin_base.hpp"
@@ -26,8 +28,8 @@ private:
 
     // subscription
     rclcpp::Subscription<transportMsgs::StartMission>::SharedPtr startMissionSub_;
-    rclcpp::Subscription<transportMsgs::MissionCompleted>::SharedPtr dustPlumeEstimationCompletedSub_;
-    rclcpp::Subscription<transportMsgs::MissionCompleted>::SharedPtr dustSensorRelayCompletedSub_;
+    rclcpp::Subscription<transportMsgs::DensityEstimationResult>::SharedPtr estimationCompletedSub_;
+    rclcpp::Subscription<transportMsgs::DustSensorResult>::SharedPtr sensorRelayCompletedSub_;
 
     // callbackgroups
     rclcpp::CallbackGroup::SharedPtr estimationCallbackGroup_;
@@ -38,11 +40,15 @@ private:
     std::atomic_bool estimationDone_;
     std::atomic_bool sensorRelayDone_;
 
+    // timers
+    rclcpp::TimerBase::SharedPtr estimationTimer_;
+    rclcpp::TimerBase::SharedPtr sensorRelayTimer_;
+
     // plugins
     pluginlib::ClassLoader<DustSensorRelayPluginBase> dustSensorRelayPluginLoader_;
-    std::shared_ptr<DustSensorRelayPluginBase> dustSensorRelayPlugin_;
-
     pluginlib::ClassLoader<DustPlumeEstimationPluginBase> dustPlumeEstimationPluginLoader_;
+    
+    std::shared_ptr<DustSensorRelayPluginBase> dustSensorRelayPlugin_;
     std::shared_ptr<DustPlumeEstimationPluginBase> dustPlumeEstimationPlugin_;
 
     // variables
@@ -50,18 +56,18 @@ private:
     std::optional<bool> missionSuccess_;
 
     // methods
-    void startTasks(const transportMsgs::StartMission startMissionMsg);
     void callDustPlumeEstimation();
     void callDustSensorRelay();
     void notifyOnceDone(std::string message, bool success);
-    void dustPlumeEstimationCompletedCallback(transportMsgs::MissionCompleted dustPlumeEstimationCompletedMsg);
-    void dustSensorRelayCompletedCallback(transportMsgs::MissionCompleted dustSensorRelayCompletedMsg);
+    void dustPlumeEstimationCompletedCallback(const transportMsgs::DensityEstimationResult&densityEstimationResultMsg);
+    void dustSensorRelayCompletedCallback(const transportMsgs::DustSensorResult& dustSensorResultMsg);
 
 public:
     DustPlumeActionsNode();
 
     void initialise();
+    void startTasks(const transportMsgs::StartMission startMissionMsg);
 
-    ~DustPlumeActionsNode() = default;
+    ~DustPlumeActionsNode();
 
 };

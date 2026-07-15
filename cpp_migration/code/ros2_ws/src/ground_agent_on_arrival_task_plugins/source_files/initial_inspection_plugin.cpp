@@ -11,8 +11,6 @@ void InitialInspectionPlugin::initialise(const rclcpp::Node::SharedPtr& node)
     busy_ = false;
     spinActive_ = false;
     imagesCaptured_ = 0;
-    
-    
 
     //Publishers
     twistPub_ = node->create_publisher<geometry_msgs::msg::Twist>(kCmdVelTopic, 10);

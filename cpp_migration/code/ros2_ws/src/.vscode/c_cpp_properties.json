@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${default}",
+                "/root/ros2_ws/install/include/transport_interfaces",
+                "/opt/ros/iron/include/std_msgs",
+                "/opt/ros/iron/include/unique_identifier_msgs",
+                "/opt/ros/iron/include/cv_bridge",
+                "/root/ros2_ws/install/include/shared_infrastructure",
+                "${workspaceFolder}/ground_agent_dust_plume_actions_plugins/include",
+                "${workspaceFolder}/ai_python",
+                "/usr/include/ignition/gazebo6",
+                "/usr/include/opencv4",
+                "/opt/ros/iron/include/ament_index_cpp",
+                "/opt/ros/iron/include/rclcpp",
+                "/usr/include/ignition/math6"
+            ],
+            "defines": [],
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
