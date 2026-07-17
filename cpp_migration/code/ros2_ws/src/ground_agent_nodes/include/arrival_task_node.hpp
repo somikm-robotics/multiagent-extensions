@@ -23,6 +23,13 @@ using InitialInspection = transport_interfaces::srv::InitialInspection;
 using OrbitHazard = transport_interfaces::srv::OrbitHazard;
 
 class ArrivalTaskNode : public rclcpp::Node {
+public:
+    ArrivalTaskNode();
+    
+    void initialise();
+    
+    ~ArrivalTaskNode();
+
 private:
 
     //publishers
@@ -52,12 +59,5 @@ private:
     // variables
     HazardType hazardType_;
     TaskType taskType_;
-
-public:
-    ArrivalTaskNode();
-    
-    void initialise();
-    
-    ~ArrivalTaskNode() = default;
 
 };

@@ -28,7 +28,7 @@ using OrbitHazard = transport_interfaces::srv::OrbitHazard;
 class OrbitHazardManagerPlugin : public OrbitHazardManagerPluginBase {
 
 public:
-    OrbitHazardManagerPlugin()=default;
+    OrbitHazardManagerPlugin(std::string pluginName);
 
     virtual void initialise(const rclcpp::Node::SharedPtr & node) override;
 
@@ -48,7 +48,8 @@ protected:
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odomSub_;
 
     // variables
-    rclcpp::Node::SharedPtr node_;
+    rclcpp::Node::WeakPtr node_;
+    rclcpp::Logger logger_;
 
     OrbitHazardConfigParams configParams_;
 
@@ -108,4 +109,6 @@ protected:
     void startCamera();
 
     virtual void startOrbit() = 0;
+
+    static std::string getOrbitHazardName(OrbitHazardManagerPluginType pluginType);
 };

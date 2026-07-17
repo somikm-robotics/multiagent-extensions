@@ -125,7 +125,8 @@ install(TARGETS dust_plume_sensor_plugin
 #test helpers
 add_library(test_helpers SHARED
   source_files/test_helpers/fakes_generator.cpp
-  source_files/test_helpers/nav2_fakes_generator.cpp)
+  source_files/test_helpers/nav2_fakes_generator.cpp
+  source_files/test_helpers/test_utils.cpp)
 
 target_include_directories(test_helpers PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

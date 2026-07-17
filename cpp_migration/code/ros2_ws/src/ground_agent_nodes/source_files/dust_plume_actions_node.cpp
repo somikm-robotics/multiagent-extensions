@@ -59,13 +59,13 @@ void DustPlumeActionsNode::startTasks(const transportMsgs::StartMission startMis
 
 DustPlumeActionsNode::~DustPlumeActionsNode()
 {
-    RCLCPP_INFO(this->get_logger(), "in destructor");
+    //RCLCPP_INFO(this->get_logger(), "in destructor");
     estimationCallbackGroup_.reset();
     sensorRelayCallbackGroup_.reset();
     dustSensorRelayPlugin_.reset();
     dustPlumeEstimationPlugin_.reset();
 
-    RCLCPP_INFO(this->get_logger(), "destructor done");
+    //RCLCPP_INFO(this->get_logger(), "destructor done");
 }
 
 void DustPlumeActionsNode::callDustPlumeEstimation()

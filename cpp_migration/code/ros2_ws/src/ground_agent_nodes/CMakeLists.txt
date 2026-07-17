@@ -37,8 +37,21 @@ ament_target_dependencies(mission_handler_node
   pluginlib
 )
 
+ament_add_gtest(mission_handler_node_test
+                  test/mission_handler_node_test.cpp
+                  source_files/mission_handler_node.cpp
+                  source_files/arrival_task_node.cpp
+                  source_files/dust_plume_actions_node.cpp
+                  )
+
+ament_target_dependencies(mission_handler_node_test
+  rclcpp
+  transport_interfaces
+  shared_infrastructure
+)                  
+
 add_executable(mission_handler_node_exec
-  source_files/mission_handler_node.cpp
+  source_files/mission_handler_node_main.cpp
 )
 
 ament_target_dependencies(mission_handler_node_exec
@@ -81,7 +94,6 @@ ament_add_gtest(dust_plume_actions_node_test
 
 ament_target_dependencies(dust_plume_actions_node_test
   rclcpp
-  sensor_msgs
   transport_interfaces
   shared_infrastructure
 )                  
@@ -121,8 +133,20 @@ ament_target_dependencies(arrival_task_node
   pluginlib
 )
 
+ament_add_gtest(arrival_task_node_test
+                  test/arrival_task_node_test.cpp
+                  source_files/arrival_task_node.cpp
+                  source_files/dust_plume_actions_node.cpp
+                  )
+
+ament_target_dependencies(arrival_task_node_test
+  rclcpp
+  transport_interfaces
+  shared_infrastructure
+)                  
+
 add_executable(arrival_task_node_exec
-  source_files/arrival_task_node.cpp
+  source_files/arrival_task_node_main.cpp
 )
 
 ament_target_dependencies(arrival_task_node_exec

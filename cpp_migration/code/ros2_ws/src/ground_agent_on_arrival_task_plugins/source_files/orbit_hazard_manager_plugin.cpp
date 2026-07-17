@@ -3,10 +3,16 @@
 #include <iomanip>
 #include <algorithm>
 
+
+OrbitHazardManagerPlugin::OrbitHazardManagerPlugin(std::string pluginName) 
+    : logger_{ rclcpp::get_logger(pluginName)} 
+{
+}
+
 void OrbitHazardManagerPlugin::initialise(const rclcpp::Node::SharedPtr &node)
 {
     node_ = node;
-   // RCLCPP_INFO(node_->get_logger(), "in orbit initialise");
+   // RCLCPP_INFO(logger_, "in orbit initialise");
 
     // Publishers
     orbitCompletedPub_ = node->create_publisher<transportMsgs::MissionCompleted>(
@@ -30,18 +36,25 @@ void OrbitHazardManagerPlugin::initialise(const rclcpp::Node::SharedPtr &node)
 	orbitMode_ = OrbitMode::NONE;
 	tick_ = 0;
 
-    tfBuffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock());
-    tfListener_ = std::make_shared<tf2_ros::TransformListener>(*tfBuffer_, node_);
+    if(auto node = node_.lock()) {
+        tfBuffer_ = std::make_shared<tf2_ros::Buffer>(node->get_clock());
+        tfListener_ = std::make_shared<tf2_ros::TransformListener>(*tfBuffer_, node);
+    } else {
+        auto msg = "Some exception occurred - Node not available";
+        RCLCPP_ERROR(logger_, msg);
+        return;
+    }
+    
 
     stagingCompleted_ = false;
     inProgress_ = false;
     orbitCompleted_ = false;
 
-    //RCLCPP_INFO(node_->get_logger(), "in orbit initialise - pre config");
+    //RCLCPP_INFO(logger_, "in orbit initialise - pre config");
     configParams_ = AgentUtils::getOrbitHazardParams();
-    RCLCPP_INFO(node_->get_logger(), "in orbit initialise - got config - angular tol: %f", configParams_.angularTolerance);
+    RCLCPP_INFO(logger_, "in orbit initialise - got config - angular tol: %f", configParams_.angularTolerance);
     serviceTimeout_ = AgentUtils::getServiceTimeoutFromConfig();
-    //RCLCPP_INFO(node_->get_logger(), "OrbitHazardManagerPlugin initialised");
+    //RCLCPP_INFO(logger_, "OrbitHazardManagerPlugin initialised");
 }
 
 void OrbitHazardManagerPlugin::restart()
@@ -63,7 +76,7 @@ void OrbitHazardManagerPlugin::odomCallback(const nav_msgs::msg::Odometry& msg)
     pose.pose = msg.pose.pose;
 
     auto transformStampedOpt = lookupTransform();
-   // RCLCPP_INFO(node_->get_logger(), "looked up transform %s", transformStampedOpt.has_value() ? "True" : "False");
+   // RCLCPP_INFO(logger_, "looked up transform %s", transformStampedOpt.has_value() ? "True" : "False");
     if(!transformStampedOpt.has_value())
         return;
     
@@ -88,7 +101,7 @@ void OrbitHazardManagerPlugin::navigateToStagingPose(std::string rosBagDir)
         missionStatusMsg.message = msg;
         missionStatusMsg.success = true;
         stagingCompletedPub_->publish(missionStatusMsg);
-        RCLCPP_INFO(node_->get_logger(), "Published: %s",  msg.c_str());
+        RCLCPP_INFO(logger_, "Published: %s",  msg.c_str());
         orbitMode_ = OrbitMode::ORBIT;  
         this->startOrbit(); 
         return;        
@@ -96,19 +109,25 @@ void OrbitHazardManagerPlugin::navigateToStagingPose(std::string rosBagDir)
     
     bagDir_ = rosBagDir;
     orbitMode_ = OrbitMode::RADIAL_IN; // default
-    RCLCPP_INFO(node_->get_logger(), "Trying to Navigate to orbit staging position...");
+    RCLCPP_INFO(logger_, "Trying to Navigate to orbit staging position...");
     inProgress_ = true;
     
-    tfIssuesTimer_ = node_->create_wall_timer(std::chrono::milliseconds(100),
+    if(auto node = node_.lock()) {
+        tfIssuesTimer_ = node->create_wall_timer(std::chrono::milliseconds(100),
                                             std::bind(&OrbitHazardManagerPlugin::restart, this));  
-    stagingTimer_ = node_->create_wall_timer(std::chrono::duration<double>(1/configParams_.cmdRateHz),
-                                             std::bind(&OrbitHazardManagerPlugin::stagingLoop, this));    
+        stagingTimer_ = node->create_wall_timer(std::chrono::duration<double>(1/configParams_.cmdRateHz),
+                                             std::bind(&OrbitHazardManagerPlugin::stagingLoop, this));        
+    } else {
+        auto msg = "Some exception occurred - Node not available";
+        RCLCPP_ERROR(logger_, msg);
+        return;
+    }
 }
 
 std::tuple<float, float> OrbitHazardManagerPlugin::calculateRadiusAndBearing()
 {
     // geometry
-   // RCLCPP_INFO(node_->get_logger(), "x: %f y: %f hazardX: %f hazardY: %f", currentX_, currentY_, hazardCenterPointX_, hazardCenterPointY_);
+   // RCLCPP_INFO(logger_, "x: %f y: %f hazardX: %f hazardY: %f", currentX_, currentY_, hazardCenterPointX_, hazardCenterPointY_);
     auto dx = currentX_- hazardCenterPointX_;
     auto dy = currentY_ - hazardCenterPointY_;
     auto radius = hypot(dx, dy);
@@ -126,7 +145,7 @@ void OrbitHazardManagerPlugin::setFromRequestParams(std::shared_ptr<OrbitHazard:
     auto patchHalfDiagonal = hypot(estimatedHazardDiameter_/2, estimatedHazardDiameter_/2);
 
     radius_ = patchHalfDiagonal + configParams_.cameraClear + configParams_.cameraOffset;
-    RCLCPP_INFO(node_->get_logger(), "radius: %f", radius_);
+    RCLCPP_INFO(logger_, "radius: %f", radius_);
 }
 
 void OrbitHazardManagerPlugin::stagingLoop()
@@ -136,7 +155,7 @@ void OrbitHazardManagerPlugin::stagingLoop()
         return;
 
     if(stagingCompleted_ && !stagingTimer_->is_canceled()) {
-        RCLCPP_INFO(node_->get_logger(), "returning from staging loop");
+        RCLCPP_INFO(logger_, "returning from staging loop");
         stagingTimer_->cancel();
         this->navigateToStagingPose(bagDir_);
         return;
@@ -151,7 +170,7 @@ void OrbitHazardManagerPlugin::stagingLoop()
                                     currentY_ - hazardCenterPointY_);
         std::ostringstream ss;
         ss << std::fixed << std::setprecision(3) << initialRadius;
-        RCLCPP_INFO_STREAM(node_->get_logger(), "Initial Radial distance: " << ss.str());
+        RCLCPP_INFO_STREAM(logger_, "Initial Radial distance: " << ss.str());
     }
 
     auto [radius, bearing] = calculateRadiusAndBearing();
@@ -169,7 +188,7 @@ void OrbitHazardManagerPlugin::stagingLoop()
     
     auto yawError = AgentUtils::normaliseAngle(desiredYaw - currentYaw_.value());
     if(tick_ < 10000) {
-        RCLCPP_INFO_STREAM(node_->get_logger(), 
+        RCLCPP_INFO_STREAM(logger_, 
         "RAW pos = ("
         << std::fixed << std::setprecision(2)
         << std::showpos << currentX_ << ","
@@ -209,10 +228,10 @@ void OrbitHazardManagerPlugin::stagingLoop()
 
 void OrbitHazardManagerPlugin::doRadialIn(const float &radialError, const float &yawError)
 {
-    RCLCPP_INFO(node_->get_logger(), "Rad err abs: %f Tol: %f", abs(radialError), configParams_.approachTolerance);
+    RCLCPP_INFO(logger_, "Rad err abs: %f Tol: %f", abs(radialError), configParams_.approachTolerance);
     if(abs(radialError) < configParams_.approachTolerance) {
         orbitMode_ = OrbitMode::TANGENT_ALIGN;
-        RCLCPP_INFO(node_->get_logger(), "RADIAL‑IN complete → TANGENT_ALIGN");
+        RCLCPP_INFO(logger_, "RADIAL‑IN complete → TANGENT_ALIGN");
         return;
     }
 
@@ -223,16 +242,16 @@ void OrbitHazardManagerPlugin::doRadialIn(const float &radialError, const float 
     twistPub_->publish(twist);
 
     if(tick_ % configParams_.logEveryNTimerTicks == 0) {
-        RCLCPP_INFO_STREAM(node_->get_logger(), getLogMessage(yawError, twist, radialError));
+        RCLCPP_INFO_STREAM(logger_, getLogMessage(yawError, twist, radialError));
     }
 }
 
 void OrbitHazardManagerPlugin::doRadialOut(const float &radialError, const float &yawError)
 {
-    RCLCPP_INFO(node_->get_logger(), "Rad err abs: %f Tol: %f", abs(radialError), configParams_.approachTolerance);
+    RCLCPP_INFO(logger_, "Rad err abs: %f Tol: %f", abs(radialError), configParams_.approachTolerance);
     if(abs(radialError) < configParams_.approachTolerance) {
         orbitMode_ = OrbitMode::TANGENT_ALIGN;
-        RCLCPP_INFO(node_->get_logger(), "RADIAL‑OUT complete → TANGENT_ALIGN");
+        RCLCPP_INFO(logger_, "RADIAL‑OUT complete → TANGENT_ALIGN");
         return;
     }
 
@@ -244,7 +263,7 @@ void OrbitHazardManagerPlugin::doRadialOut(const float &radialError, const float
     twistPub_->publish(twist);
 
     if(tick_ % configParams_.logEveryNTimerTicks == 0) {
-        RCLCPP_INFO_STREAM(node_->get_logger(), getLogMessage(yawError, twist, radialError));
+        RCLCPP_INFO_STREAM(logger_, getLogMessage(yawError, twist, radialError));
     }
 
     return;
@@ -256,7 +275,7 @@ void OrbitHazardManagerPlugin::doTangentAlign(const float &bearing, const float 
     if (abs(yawError) < (configParams_.angularTolerance * M_PI / 180.0)) {
         stagingCompleted_ = true;
         previousBearing_ = bearing;
-        RCLCPP_INFO(node_->get_logger(), "TANGENT_ALIGN complete...back to the plugin for orbiting");
+        RCLCPP_INFO(logger_, "TANGENT_ALIGN complete...back to the plugin for orbiting");
         return;
     }
 
@@ -265,10 +284,10 @@ void OrbitHazardManagerPlugin::doTangentAlign(const float &bearing, const float 
     twistPub_->publish(twist);
 
     if(tick_ % configParams_.logEveryNTimerTicks == 0) {
-        RCLCPP_INFO_STREAM(node_->get_logger(), "condition met ? " 
+        RCLCPP_INFO_STREAM(logger_, "condition met ? " 
                                 << abs(yawError) << " " << configParams_.angularTolerance << " " 
                                 <<  (configParams_.angularTolerance * M_PI / 180.0));
-        RCLCPP_INFO_STREAM(node_->get_logger(), getLogMessage(yawError, twist));
+        RCLCPP_INFO_STREAM(logger_, getLogMessage(yawError, twist));
     }
     return;
 }
@@ -296,14 +315,21 @@ void OrbitHazardManagerPlugin::startCamera()
     auto currentTimeStamp = AgentUtils::getCurrentTimeFormatString();
     auto orbitModeStr = AgentUtils::toOrbitModeStr(orbitMode_);
     auto bagDir = AgentUtils::getFolderPathStr(bagDir_, "bag_" + currentTimeStamp);
-    RCLCPP_INFO_STREAM(node_->get_logger(), orbitModeStr.c_str()
+    RCLCPP_INFO_STREAM(logger_, orbitModeStr.c_str()
                                      << " → Starting Ros Bag..." << bagDir);
     auto bagReturn = AgentUtils::startRosbag(bagDir);
     bagProc_ = std::move(std::get<0>(bagReturn));
     bagErr_ = std::move(std::get<1>(bagReturn));
-    RCLCPP_INFO(node_->get_logger(),  "%s → Ros Bag started...", orbitModeStr.c_str());
+    RCLCPP_INFO(logger_,  "%s → Ros Bag started...", orbitModeStr.c_str());
 }
 
+std::string OrbitHazardManagerPlugin::getOrbitHazardName(OrbitHazardManagerPluginType pluginType)
+{
+    return pluginType == OrbitHazardManagerPluginType::Nav2 
+                            ? "Nav2OrbitHazardManagerPlugin" 
+                            : "TwistCommanderOrbitHazardPlugin";
+
+}
 std::optional<geometry_msgs::msg::TransformStamped> OrbitHazardManagerPlugin::lookupTransform()
 {
     try {
@@ -312,18 +338,18 @@ std::optional<geometry_msgs::msg::TransformStamped> OrbitHazardManagerPlugin::lo
                                     rclcpp::Time(), 
                                     rclcpp::Duration::from_seconds(configParams_.tfTimeoutSeconds))) 
         {
-            RCLCPP_WARN_STREAM(node_->get_logger(), "TF unavailable when computing staging pose");
+            RCLCPP_WARN_STREAM(logger_, "TF unavailable when computing staging pose");
             inProgress_ = false;
             return std::nullopt;
         }
-     //   RCLCPP_INFO(node_->get_logger(), "can transform...looking");
+     //   RCLCPP_INFO(logger_, "can transform...looking");
         auto tf = tfBuffer_->lookupTransform(configParams_.mapFrame, configParams_.agilexBaseFrame,
                                     rclcpp::Time(), 
                                     rclcpp::Duration::from_seconds(configParams_.tfTimeoutSeconds));
         return tf;
     } catch(const std::runtime_error& ex) {
 
-            RCLCPP_ERROR_STREAM(node_->get_logger(), "Exception occurred whilst looking up transform-" << ex.what());
+            RCLCPP_ERROR_STREAM(logger_, "Exception occurred whilst looking up transform-" << ex.what());
             inProgress_ = false;
             return std::nullopt;
 
@@ -354,6 +380,7 @@ void OrbitHazardManagerPlugin::publishOrbitCompleted(bool success)
     missionCompletedMsg.success = success;
     orbitCompletedPub_->publish(missionCompletedMsg);
     this->orbitCompleted_ = true;
+    RCLCPP_INFO(logger_, "Published Mission Completed for Orbiting");
 }
 
 
@@ -400,13 +427,13 @@ void OrbitHazardManagerPlugin::publishOrbitCompleted(bool success)
     std::ostringstream ss;
     ss << std::fixed << std::setprecision(2) << hazardCenterPointX_ << ", " << hazardCenterPointY_;
 
-    RCLCPP_INFO_STREAM(node_->get_logger(), "Orbit Center- (" << ss.str() << ")" );
+    RCLCPP_INFO_STREAM(logger_, "Orbit Center- (" << ss.str() << ")" );
     ss.clear();
     ss << std::fixed << std::setprecision(2) << radiusEntry;
-    RCLCPP_INFO_STREAM(node_->get_logger(), "Entry Radius: " << ss.str() );
+    RCLCPP_INFO_STREAM(logger_, "Entry Radius: " << ss.str() );
     ss.clear();
     ss << std::fixed << std::setprecision(2) << xs << ", " << ys;
-    RCLCPP_INFO_STREAM(node_->get_logger(), "Computed Staging: " << ss.str() );
+    RCLCPP_INFO_STREAM(logger_, "Computed Staging: " << ss.str() );
 
     return SimplePose {xs, ys, 0.0,  yaw};
 }

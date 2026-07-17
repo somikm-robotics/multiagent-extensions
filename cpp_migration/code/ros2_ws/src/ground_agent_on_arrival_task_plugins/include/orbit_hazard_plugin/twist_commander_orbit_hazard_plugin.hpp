@@ -11,7 +11,7 @@
 
 class TwistCommanderOrbitHazardPlugin : public OrbitHazardManagerPlugin {
 public:
-    TwistCommanderOrbitHazardPlugin() = default;
+    TwistCommanderOrbitHazardPlugin();
 
     virtual void doHazardOrbit(std::shared_ptr<OrbitHazard::Request> request) override;
 

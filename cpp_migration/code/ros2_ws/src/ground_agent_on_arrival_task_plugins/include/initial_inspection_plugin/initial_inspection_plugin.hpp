@@ -25,7 +25,7 @@ using InitialInspection = transport_interfaces::srv::InitialInspection;
 class InitialInspectionPlugin : public InitialInspectionPluginBase {
 
 public:
-    InitialInspectionPlugin()=default;
+    InitialInspectionPlugin();
 
     void initialise(const rclcpp::Node::SharedPtr & node) override;
     std::shared_ptr<InitialInspection::Response> performInspection(
@@ -62,7 +62,8 @@ private:
     rclcpp::Service<InitialInspection>::SharedPtr initialInspectionService_;    
 
    // instance variables
-    rclcpp::Node::SharedPtr node_;
+    rclcpp::Node::WeakPtr node_;
+    rclcpp::Logger logger_;
     HazardType hazardType_;
     bool busy_;
     bool spinActive_;

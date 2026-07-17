@@ -34,7 +34,7 @@ using OrbitHazard = transport_interfaces::srv::OrbitHazard;
 class Nav2OrbitHazardManagerPlugin : public OrbitHazardManagerPlugin {
 
 public:
-    Nav2OrbitHazardManagerPlugin() = default;
+    Nav2OrbitHazardManagerPlugin();
 
     virtual void initialise(const rclcpp::Node::SharedPtr& node) override;
 

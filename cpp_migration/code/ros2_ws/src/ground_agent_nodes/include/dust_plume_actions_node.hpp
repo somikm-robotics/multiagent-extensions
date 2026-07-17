@@ -21,7 +21,15 @@
 namespace transportMsgs = transport_interfaces::msg;
 
 class DustPlumeActionsNode : public rclcpp::Node {
-    
+
+public:
+    DustPlumeActionsNode();
+
+    void initialise();
+    void startTasks(const transportMsgs::StartMission startMissionMsg);
+
+    ~DustPlumeActionsNode();    
+
 private:
     //Publishers
     rclcpp::Publisher<transportMsgs::MissionStatus>::SharedPtr missionStatusPub_;
@@ -61,13 +69,5 @@ private:
     void notifyOnceDone(std::string message, bool success);
     void dustPlumeEstimationCompletedCallback(const transportMsgs::DensityEstimationResult&densityEstimationResultMsg);
     void dustSensorRelayCompletedCallback(const transportMsgs::DustSensorResult& dustSensorResultMsg);
-
-public:
-    DustPlumeActionsNode();
-
-    void initialise();
-    void startTasks(const transportMsgs::StartMission startMissionMsg);
-
-    ~DustPlumeActionsNode();
 
 };

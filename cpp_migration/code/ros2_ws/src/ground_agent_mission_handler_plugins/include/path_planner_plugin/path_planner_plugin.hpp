@@ -8,7 +8,7 @@
 
 class PathPlannerPlugin : public PathPlannerPluginBase {
 public:
-    PathPlannerPlugin()=default;
+    PathPlannerPlugin(std::string pluginName);
 
     void initialise(const rclcpp::Node::SharedPtr & node) override = 0;
 
@@ -21,7 +21,9 @@ protected:
     // actions
     rclcpp_action::Client<RequestPathPlan>::SharedPtr requestPathPlanActionClient_;
 
-    rclcpp::Node::SharedPtr node_;
+    rclcpp::Node::WeakPtr node_;
+    rclcpp::Logger logger_;
+
     float serviceTimeout_;
     SendGoalOptions requestOptions_;
 

@@ -18,8 +18,6 @@
 # include "orbit_hazard_plugin/nav2_orbit_hazard_manager_plugin.hpp"
 #include "agent_utils.hpp"
 
-enum class OrbitHazardManagerPluginType {Nav2, Twist};
-
 struct OrbitHazardManagerPluginTestData {
     std::string pluginName;
     OrbitHazardManagerPluginType pluginType;

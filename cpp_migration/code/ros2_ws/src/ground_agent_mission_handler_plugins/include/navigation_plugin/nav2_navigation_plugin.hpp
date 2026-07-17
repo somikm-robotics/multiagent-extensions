@@ -17,7 +17,7 @@ using GoalHandle = rclcpp_action::ClientGoalHandle<FollowWaypoints>;
 
 class Nav2NavigationPlugin : public NavigationPluginBase {
 public:
-    Nav2NavigationPlugin()=default;
+    Nav2NavigationPlugin();
 
     void initialise(const rclcpp::Node::SharedPtr & node) override;
     void handleNavigation(std::shared_ptr<Navigate::Request> request) override;
@@ -34,7 +34,8 @@ private:
     // Nav2 client 
     rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SharedPtr followWaypointsClient_;
     
-    rclcpp::Node::SharedPtr node_;
+    rclcpp::Node::WeakPtr node_;
+    rclcpp::Logger logger_;
 
     // future handlers
     void followWaypointsGoalResponse(GoalHandle::SharedPtr goal_handle);

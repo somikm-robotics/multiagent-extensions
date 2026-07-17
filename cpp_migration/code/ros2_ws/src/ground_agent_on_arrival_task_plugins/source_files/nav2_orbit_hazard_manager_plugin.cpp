@@ -5,34 +5,45 @@
 
 using Parameter = rcl_interfaces::msg::Parameter;
 
+Nav2OrbitHazardManagerPlugin::Nav2OrbitHazardManagerPlugin() : 
+    OrbitHazardManagerPlugin("Nav2OrbitHazardManagerPlugin") 
+{
+}
 
 void Nav2OrbitHazardManagerPlugin::initialise(const rclcpp::Node::SharedPtr &node)
 {
     
     OrbitHazardManagerPlugin::initialise(node);
-    RCLCPP_INFO(node_->get_logger(), "OrbitHazardManagerPlugin initialised");
+    RCLCPP_INFO(logger_, "OrbitHazardManagerPlugin initialised");
 
     lastCaptureDegree_ = 0.0;
     orbitDone_ = false;
 
     // subscriptions
-    orbitAngleSub_ = node_->create_subscription<std_msgs::msg::Float32>(configParams_.hazardOrbitAngleTopic, 10, 
+    if(auto node = node_.lock()) {
+        orbitAngleSub_ = node->create_subscription<std_msgs::msg::Float32>(configParams_.hazardOrbitAngleTopic, 10, 
                                                 [this](const std_msgs::msg::Float32& angleMsg) {
-        this->orbitAngleCallback(angleMsg);
-    });
+            this->orbitAngleCallback(angleMsg);
+        });
 
-    orbitDoneSub_ = node_->create_subscription<std_msgs::msg::Bool>(
-                        configParams_.hazardOrbitDoneTopic, 10, 
-                            [this](const std_msgs::msg::Bool& doneMsg){
-                                this->orbitDoneCallback(doneMsg);
-    });
-    
-    // client
-    setParamsClient_ = node_->create_client<SetParameters>(configParams_.nav2ControllerServerSetParamsSrv);
-    followPathActionClient_ = rclcpp_action::create_client<FollowPath>(node_, "/follow_path");
-   // navigateToPoseActionClient_ = rclcpp_action::create_client<NavigateToPose>(node, "navigate_to_pose");
+        orbitDoneSub_ = node->create_subscription<std_msgs::msg::Bool>(
+                            configParams_.hazardOrbitDoneTopic, 10, 
+                                [this](const std_msgs::msg::Bool& doneMsg){
+                                    this->orbitDoneCallback(doneMsg);
+        });
+        
+        // client
+        setParamsClient_ = node->create_client<SetParameters>(configParams_.nav2ControllerServerSetParamsSrv);
+        followPathActionClient_ = rclcpp_action::create_client<FollowPath>(node, "/follow_path");
+        // navigateToPoseActionClient_ = rclcpp_action::create_client<NavigateToPose>(node, "navigate_to_pose");
 
-   RCLCPP_INFO(node_->get_logger(), "Nav2OrbitHazardManagerPlugin initialised");
+        RCLCPP_INFO(logger_, "Nav2OrbitHazardManagerPlugin initialised");
+    }else {
+        auto msg = "Some exception occurred - Node not available";
+        RCLCPP_ERROR(logger_, msg);
+        return;
+    }
+
 }
 
 void Nav2OrbitHazardManagerPlugin::doHazardOrbit(std::shared_ptr<OrbitHazard::Request> request) 
@@ -46,7 +57,7 @@ void Nav2OrbitHazardManagerPlugin::doHazardOrbit(std::shared_ptr<OrbitHazard::Re
 
 void Nav2OrbitHazardManagerPlugin::startOrbit()
 {
-    RCLCPP_INFO(node_->get_logger(), "In start orbit");
+    RCLCPP_INFO(logger_, "In start orbit");
     
     if(stagingCompleted_) 
     {
@@ -59,7 +70,7 @@ void Nav2OrbitHazardManagerPlugin::setOrbitParams()
 {
     try {
         if(!setParamsClient_->wait_for_service(std::chrono::duration<float>(serviceTimeout_))) {
-			RCLCPP_INFO_STREAM(node_->get_logger(), "Service not available: " << configParams_.nav2ControllerServerSetParamsSrv);
+			RCLCPP_INFO_STREAM(logger_, "Service not available: " << configParams_.nav2ControllerServerSetParamsSrv);
 			return;
 		}
 
@@ -95,7 +106,7 @@ void Nav2OrbitHazardManagerPlugin::setOrbitParams()
         
 
     } catch(const std::runtime_error& ex) {
-        RCLCPP_ERROR_STREAM(node_->get_logger(), "Exception occured whilst trying to set params" << ex.what());
+        RCLCPP_ERROR_STREAM(logger_, "Exception occured whilst trying to set params" << ex.what());
     }
 }
 
@@ -109,10 +120,10 @@ void Nav2OrbitHazardManagerPlugin::setParameterResponse(rclcpp::Client<rcl_inter
                             return r.successful;
                         })) {
 
-        RCLCPP_ERROR(node_->get_logger(), "SetParameters rejected. ");
+        RCLCPP_ERROR(logger_, "SetParameters rejected. ");
         
     }
-    RCLCPP_INFO(node_->get_logger(), "Orbit parameters set successfully.");
+    RCLCPP_INFO(logger_, "Orbit parameters set successfully.");
     this->sendFollowPathGoal();
 }
 
@@ -121,13 +132,13 @@ void Nav2OrbitHazardManagerPlugin::sendFollowPathGoal()
     try {
 
         if(!followPathActionClient_->wait_for_action_server(std::chrono::duration<float>(serviceTimeout_))) {
-			RCLCPP_INFO_STREAM(node_->get_logger(), "Waiting for Nav2 action servers… Timed Out");
+			RCLCPP_INFO_STREAM(logger_, "Waiting for Nav2 action servers… Timed Out");
 			return;
 		}
 
         auto path = this->makeMinimalPathInMap();
         if(!path.has_value()) {
-            RCLCPP_WARN(node_->get_logger(), "TF not ready yet. Retrying...");
+            RCLCPP_WARN(logger_, "TF not ready yet. Retrying...");
             return;
         }
         auto goal = FollowPath::Goal();
@@ -139,22 +150,22 @@ void Nav2OrbitHazardManagerPlugin::sendFollowPathGoal()
 		rclcpp_action::Client<FollowPath>::SendGoalOptions options;
 		options.goal_response_callback = std::bind(&Nav2OrbitHazardManagerPlugin::followPathGoalResponse, 
 													this, std::placeholders::_1);
-		RCLCPP_INFO_STREAM(node_->get_logger(), "Sending FollowPath goal with controller_id = " << configParams_.nav2OrbitControllerId);
+		RCLCPP_INFO_STREAM(logger_, "Sending FollowPath goal with controller_id = " << configParams_.nav2OrbitControllerId);
 
 		followPathActionClient_->async_send_goal(goal, options);	
 
     } catch(const std::runtime_error& ex) {
-        RCLCPP_ERROR_STREAM(node_->get_logger(), "Exception occured whilst trying to follow path" << ex.what());
+        RCLCPP_ERROR_STREAM(logger_, "Exception occured whilst trying to follow path" << ex.what());
     }
 }
 
 void Nav2OrbitHazardManagerPlugin::followPathGoalResponse(GoalHandleFollowPath::SharedPtr goal_handle)
 {
     if(!goal_handle) {
-		RCLCPP_WARN_STREAM(node_->get_logger(), "FollowPAth goal rejected");
+		RCLCPP_WARN_STREAM(logger_, "FollowPAth goal rejected");
 		return;
 	}	
-	RCLCPP_INFO_STREAM(node_->get_logger(), "Follow Path goal accepted, waiting for completion");
+	RCLCPP_INFO_STREAM(logger_, "Follow Path goal accepted, waiting for completion");
 
 	followPathActionClient_->async_get_result(goal_handle, std::bind(&Nav2OrbitHazardManagerPlugin::followPathResult,
 																		this, std::placeholders::_1));
@@ -171,14 +182,15 @@ void Nav2OrbitHazardManagerPlugin::followPathResult(const GoalHandleFollowPath::
             {
                 orbitDone_ = true;
             }
-        RCLCPP_INFO_STREAM(node_->get_logger(),"FollowPath finished with status: " << errorCode);
+        RCLCPP_INFO_STREAM(logger_,"FollowPath finished with status: " << errorCode << 
+                                     " orbit done: " << orbitDone_);
 
 
         this->cleanup();
 
     } catch(const std::runtime_error& ex) {
 
-        RCLCPP_ERROR_STREAM(node_->get_logger(), "Exception occured whilst trying to get result" << ex.what());
+        RCLCPP_ERROR_STREAM(logger_, "Exception occured whilst trying to get result" << ex.what());
     }
 }
 
@@ -195,7 +207,7 @@ void Nav2OrbitHazardManagerPlugin::orbitDoneCallback(const std_msgs::msg::Bool& 
     if(!doneMsg.data || orbitDone_)
         return;
     orbitDone_ = true;
-    RCLCPP_INFO(node_->get_logger(), "Orbit done received. Cancelling FollowPath to return to normal navigation.");
+    RCLCPP_INFO(logger_, "Orbit done received. Cancelling FollowPath to return to normal navigation.");
     this->cancelFollowPathAndExit();
     publishOrbitCompleted(true);
 }
@@ -203,11 +215,11 @@ void Nav2OrbitHazardManagerPlugin::orbitDoneCallback(const std_msgs::msg::Bool& 
 void Nav2OrbitHazardManagerPlugin::cancelDoneCallback(rclcpp_action::Client<FollowPath>::CancelResponse::SharedPtr response)
 {
     if(response->goals_canceling.size() > 0) {
-        RCLCPP_INFO(node_->get_logger(), "FollowPath goal successfully canceled.");
+        RCLCPP_INFO(logger_, "FollowPath goal successfully canceled.");
     } else {
-        RCLCPP_WARN(node_->get_logger(), "No active goals were canceled.");
+        RCLCPP_WARN(logger_, "No active goals were canceled.");
     }
-    RCLCPP_INFO(node_->get_logger(), "Orbit complete. Exiting Orbiting_Manager.");
+    RCLCPP_INFO(logger_, "Orbit complete. Exiting Orbiting_Manager.");
 
     publishOrbitCompleted(false);
     cleanup();
@@ -222,7 +234,7 @@ std::optional<nav_msgs::msg::Path> Nav2OrbitHazardManagerPlugin::makeMinimalPath
     auto tf = tfOpt.value();
     geometry_msgs::msg::PoseStamped pose;
     pose.header.frame_id = configParams_.mapFrame;
-    pose.header.stamp = node_->get_clock()->now();
+    pose.header.stamp = rclcpp::Clock(RCL_SYSTEM_TIME).now();
     pose.pose.position.x = tf.transform.translation.x + configParams_.hazardMinimalPathOffset * cos(stagingYaw_);
     pose.pose.position.y = tf.transform.translation.y + configParams_.hazardMinimalPathOffset * cos(stagingYaw_);
     pose.pose.position.z = 0.0;
@@ -241,7 +253,7 @@ std::optional<nav_msgs::msg::Path> Nav2OrbitHazardManagerPlugin::makeMinimalPath
 void Nav2OrbitHazardManagerPlugin::cancelFollowPathAndExit()
 {
     if(!activeGoalHandleFollowPath_) {
-        RCLCPP_WARN(node_->get_logger(), "No active FollowPath goal to cancel. Exiting anyway.");
+        RCLCPP_WARN(logger_, "No active FollowPath goal to cancel. Exiting anyway.");
         this->cleanup();
         return;
     }
@@ -258,7 +270,7 @@ void Nav2OrbitHazardManagerPlugin::navigateToStagingPose()
 {
     try {
 		if(!navigateToPoseActionClient_->wait_for_action_server(std::chrono::duration<float>(serviceTimeout_))) {
-			RCLCPP_INFO_STREAM(node_->get_logger(), "Waiting for Nav2 action servers …");
+			RCLCPP_INFO_STREAM(logger_, "Waiting for Nav2 action servers …");
 			return;
 		}
 
@@ -268,7 +280,7 @@ void Nav2OrbitHazardManagerPlugin::navigateToStagingPose()
         
         auto pose = computeStagingPose();
         if(!pose.has_value()) {
-            RCLCPP_WARN(node_->get_logger(), "TF not ready yet. Retrying staging computation...");
+            RCLCPP_WARN(logger_, "TF not ready yet. Retrying staging computation...");
             return;
         }
 
@@ -281,7 +293,7 @@ void Nav2OrbitHazardManagerPlugin::navigateToStagingPose()
         goal.pose.pose.position.y = stagingY_;
         populateOrientation(goal.pose);
 
-        RCLCPP_INFO_STREAM(node_->get_logger(),"TF ready now...Navigating to Staging pose now - (" << stagingX_ << stagingY_ << " )" );
+        RCLCPP_INFO_STREAM(logger_,"TF ready now...Navigating to Staging pose now - (" << stagingX_ << stagingY_ << " )" );
 
 		rclcpp_action::Client<NavigateToPose>::SendGoalOptions options;
 		options.goal_response_callback = std::bind(&Nav2OrbitHazardManagerPlugin::navigateToPoseGoalResponse, 
@@ -290,17 +302,17 @@ void Nav2OrbitHazardManagerPlugin::navigateToStagingPose()
 		navigateToPoseActionClient_->async_send_goal(goal, options);	
 
 	} catch(const std::runtime_error& ex) {
-		RCLCPP_ERROR_STREAM(node_->get_logger(), "Exception occured whilst trying to navigate" << ex.what());
+		RCLCPP_ERROR_STREAM(logger_, "Exception occured whilst trying to navigate" << ex.what());
 	}
 }
 
 void Nav2OrbitHazardManagerPlugin::navigateToPoseGoalResponse(GoalHandleNavigateToPose::SharedPtr goal_handle)
 {
     if(!goal_handle) {
-		RCLCPP_WARN_STREAM(node_->get_logger(), "NavigateToPose goal rejected");
+		RCLCPP_WARN_STREAM(logger_, "NavigateToPose goal rejected");
 		return;
 	}	
-	RCLCPP_INFO_STREAM(node_->get_logger(), "Navigate to pose goal accepted, waiting for completion");
+	RCLCPP_INFO_STREAM(logger_, "Navigate to pose goal accepted, waiting for completion");
 
 	navigateToPoseActionClient_->async_get_result(goal_handle, std::bind(&Nav2OrbitHazardManagerPlugin::navigateToPoseResult,
 																		this, std::placeholders::_1));
@@ -313,32 +325,32 @@ void Nav2OrbitHazardManagerPlugin::navigateToPoseResult(const GoalHandleNavigate
 
         // 4 = SUCCEEDED
         if(errorCode == 4) {
-            RCLCPP_INFO(node_->get_logger(), "Reached staging pose. Starting orbit.");
+            RCLCPP_INFO(logger_, "Reached staging pose. Starting orbit.");
             this->setOrbitParams();
             return;
         }
 
         auto distWithCoords = calculateStagingDistance();
         if(!distWithCoords.has_value()) {
-            RCLCPP_WARN(node_->get_logger(), "Navigation failed due to TF issues");
+            RCLCPP_WARN(logger_, "Navigation failed due to TF issues");
             return;
         }
 
         auto dist = distWithCoords.value().distance;
         std::ostringstream ss;
         ss << std::fixed << std::setprecision(3) << dist;
-        RCLCPP_INFO_STREAM(node_->get_logger(), "Distance tp staging: " << ss.str());
+        RCLCPP_INFO_STREAM(logger_, "Distance tp staging: " << ss.str());
 
         // If navigation failed but robot is close enough
         if (dist < configParams_.hazardNavigatePoseMaxDistance) {
-            RCLCPP_INFO(node_->get_logger(), "Navigation failed but close enough to staging. Starting orbit.");
+            RCLCPP_INFO(logger_, "Navigation failed but close enough to staging. Starting orbit.");
             this->setOrbitParams();
             return;
         }
-        RCLCPP_ERROR(node_->get_logger(), "Navigation failed and too far from staging max distance.");
+        RCLCPP_ERROR(logger_, "Navigation failed and too far from staging max distance.");
             
     } catch(std::runtime_error& ex) {
-        RCLCPP_ERROR_STREAM(node_->get_logger(), "Exception occured whilst trying to get navigation results" << ex.what());
+        RCLCPP_ERROR_STREAM(logger_, "Exception occured whilst trying to get navigation results" << ex.what());
     }
 }
 

@@ -18,7 +18,7 @@ using PoseStamped = geometry_msgs::msg::PoseStamped;
 class Nav2PathPlannerPlugin : public PathPlannerPlugin {
 public:
     
-        Nav2PathPlannerPlugin() = default;
+        Nav2PathPlannerPlugin();
 
         void initialise(const rclcpp::Node::SharedPtr & node) override;
         
@@ -39,7 +39,7 @@ private:
     // methods
     geometry_msgs::msg::PoseStamped getPose(geometry_msgs::msg::Pose goalPose);    
     
-    static std::vector<PoseStamped> decimate(nav_msgs::msg::Path path, rclcpp::Node::SharedPtr node);
+    static std::vector<PoseStamped> decimate(nav_msgs::msg::Path path, rclcpp::Logger logger);
 
     // variables
     inline static const float SPACING = 2.0;

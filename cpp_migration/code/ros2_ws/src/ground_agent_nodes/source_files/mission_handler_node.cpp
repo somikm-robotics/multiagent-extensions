@@ -32,7 +32,7 @@ MissionHandlerNode::MissionHandlerNode()  : Node ("mission_handler_node"),
         this->reachedTargetCallback(result);
     });
 	onArrivalTaskCompletionSub_ = this->create_subscription<transportMsgs::MissionStatus>(
-    "on_arrival_mission_status", 10, [this](const transportMsgs::MissionStatus& result){
+    "on_arrival_task_mission_status", 10, [this](const transportMsgs::MissionStatus& result){
         this->onArrivalTaskCompletion(result);
     });
 
@@ -48,12 +48,12 @@ MissionHandlerNode::MissionHandlerNode()  : Node ("mission_handler_node"),
 
 	
 	// plugin
-	navigationPlugin_ = navigationPluginLoader_.createSharedInstance("ground_agent_mission_handler_plugins/NavigationPlugin");
-	pathPlannerPlugin_ = pathPlannerPluginLoader_.createSharedInstance("ground_agent_mission_handler_plugins/PathPlannerPluginBase");
+	navigationPlugin_ = navigationPluginLoader_.createSharedInstance("Nav2NavigationPlugin");
+	pathPlannerPlugin_ = pathPlannerPluginLoader_.createSharedInstance("Nav2PathPlannerPlugin");
 
 	// variables
-	//approved_ = NULL;
-	//orbitApproved_ = NULL;
+	approved_ = std::nullopt;
+	orbitApproved_ = std::nullopt;							
 	hazardReceived_ = false;
 	hazardType_ = HazardType::NONE;
 	taskType_ = TaskType::NONE;
@@ -88,9 +88,8 @@ void MissionHandlerNode::hazardDetectedCallback(const transportMsgs::HazardPose&
 	}
 
 	taskType_ = hazardType_ == HazardType::FIBROUS_HAZARD ? TaskType::INITIAL_INSPECTION 
-														: TaskType::DENSITY_ESTIMATION;
+														: TaskType::DUST_PLUME_ACTIONS;
 								
-
 	hazardPose_ = hazardPoseMessage.pose;
 	estimatedHazardDiameter_ = hazardPoseMessage.estimated_hazard_diameter;
 	hazardCenterPoint_ = hazardPoseMessage.hazard_center_point;
@@ -101,7 +100,7 @@ void MissionHandlerNode::hazardDetectedCallback(const transportMsgs::HazardPose&
 		RCLCPP_INFO_STREAM(this->get_logger(), "Waiting " << navigationOverrideTimeoutInMinutes_ << " minute(s)");
 		overrideTimer_ = this->create_wall_timer(std::chrono::minutes(navigationOverrideTimeoutInMinutes_),
 													std::bind(&MissionHandlerNode::checkOverrideStatus, this));
-
+		RCLCPP_INFO(this->get_logger(), "Created wall timer");
 	} catch(const std::runtime_error& ex) {
 		RCLCPP_ERROR(this->get_logger(), "Exception occurred: %s", ex.what());
 	}
@@ -121,7 +120,7 @@ void MissionHandlerNode::handleOverride(std::shared_ptr<OverrideMission::Request
 
 		if(hazardReceived_) {
 			if(taskType_ == TaskType::INITIAL_INSPECTION
-				|| taskType_ == TaskType::DENSITY_ESTIMATION) {
+				|| taskType_ == TaskType::DUST_PLUME_ACTIONS) {
 				approved_ = true;
 				this->requestPathForNavigation();
 			}
@@ -146,14 +145,18 @@ void MissionHandlerNode::handleOverride(std::shared_ptr<OverrideMission::Request
 
 void MissionHandlerNode::checkOverrideStatus()
 {
+	//RCLCPP_INFO(this->get_logger(), "In check override status");
 	if(!hazardReceived_)
 		return; // nothing to do
 	try {
+		RCLCPP_INFO(this->get_logger(), "In check override status - %s orbit Approved- %s", AgentUtils::toTaskTypeStr(taskType_).c_str(), orbitApproved_.has_value() ? "True": "False");
 		auto initialTaskType = hazardType_ == HazardType::FIBROUS_HAZARD ? TaskType::INITIAL_INSPECTION 
-							: (hazardType_ == HazardType::DUST_PLUME ? TaskType::DENSITY_ESTIMATION : TaskType::NONE);
+							: (hazardType_ == HazardType::DUST_PLUME ? TaskType::DUST_PLUME_ACTIONS : TaskType::NONE);
+
 		std::string msg;
-		if(taskType_ == initialTaskType && !approved_.has_value()
-			&& taskType_ == TaskType::ASBESTOS_ANALYSIS && !orbitApproved_.has_value()) {
+		if((taskType_ == initialTaskType && !approved_.has_value())
+			|| (taskType_ == TaskType::ASBESTOS_ANALYSIS && !orbitApproved_.has_value())) 
+		{
 			msg = "No override received, Timeout reached. Proceding with mission!";
 			RCLCPP_INFO_STREAM(this->get_logger(), msg);
 
@@ -178,13 +181,14 @@ void MissionHandlerNode::checkOverrideStatus()
 			RCLCPP_ERROR(this->get_logger(), "Exception occurred: %s", ex.what());
 	}	
 	hazardReceived_ = false;
-	approved_ = NULL;
-	orbitApproved_ = NULL;							
+	approved_ = std::nullopt;
+	orbitApproved_ = std::nullopt;							
 	
 }
 
 void MissionHandlerNode::reachedTargetCallback(const transportMsgs::NavigationResult& resultMessage)
 {
+	RCLCPP_INFO(this->get_logger(), "In reach target callback: is return ?: %s", isReturn_ ? "True" : "False");
 	try {
 		if(isReturn_) {
 			this->setNextTaskType();
@@ -208,15 +212,16 @@ void MissionHandlerNode::reachedTargetCallback(const transportMsgs::NavigationRe
 void MissionHandlerNode::onArrivalTaskCompletion(
 	transportMsgs::MissionStatus arrivalTaskCompletionMessage)
 {
+	//RCLCPP_INFO(this->get_logger(), "In arrival task completion");
 	isReturn_ = true;
 	auto msg = AgentUtils::getMessage("Received message: ", arrivalTaskCompletionMessage.message, 
 								 " for ", arrivalTaskCompletionMessage.hazard_type, " performing ",
 								 	arrivalTaskCompletionMessage.task_type);
 	if(!arrivalTaskCompletionMessage.success) {
-		RCLCPP_ERROR_STREAM(this->get_logger(), msg);
+		RCLCPP_ERROR(this->get_logger(), msg.c_str());
 		return;
 	}
-	RCLCPP_INFO_STREAM(this->get_logger(), msg);
+	RCLCPP_INFO(this->get_logger(), msg.c_str());
 	this->publishIntermediaryStatus(arrivalTaskCompletionMessage.message, false);
 
 	this->startReturnToBase(arrivalTaskCompletionMessage);
@@ -426,21 +431,4 @@ void MissionHandlerNode::handlePathPlanResult(const GoalHandleRequestPathPlan::W
 {
 	RCLCPP_INFO_STREAM(this->get_logger(), "Received waypoints: " << result.result->waypoints.size());
 	this->sendNavigationCommand(result.result->waypoints);
-}
-
-int main(int argc, char** argv) {
-
-    auto node = std::make_shared<MissionHandlerNode>();
-	node->initialise();
-
-	RCLCPP_INFO(node->get_logger(), "MissionHandler Node has been started successfully & is ready");
-
-    try {
-        rclcpp::spin(node);
-    } catch(const std::exception &ex) {
-        RCLCPP_ERROR(node->get_logger(), "Exception occurred: %s", ex.what());
-    }
-    rclcpp::shutdown();
-    
-    return 0;
 }
