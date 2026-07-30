@@ -1,0 +1,200 @@
+/* ── Reset ───────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background: #c0c0c0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, sans-serif;
+    font-size: 13px;
+}
+
+/* ── Window chrome ───────────────────────────────────────────────────────── */
+.window {
+    width: 420px;
+    background: #d4d0c8;
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+}
+
+.title-bar {
+    background: #000080;
+    color: #ffffff;
+    padding: 4px 8px;
+    font-weight: bold;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    user-select: none;
+}
+
+/* ── Status textarea ─────────────────────────────────────────────────────── */
+.history-area-wrap {
+    padding: 6px 8px;
+    background: #d4d0c8;
+}
+
+#history-area {
+    width: 100%;
+    height: 72px;
+    background: #ffffff;
+    border: 2px solid;
+    border-color: #808080 #ffffff #ffffff #808080;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #cc0000;
+    padding: 4px 6px;
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+}
+
+/* ── Fieldsets ───────────────────────────────────────────────────────────── */
+.action-group {
+    margin: 6px 8px;
+    border: 1px solid #808080;
+    background: #d4d0c8;
+    padding: 6px 10px 10px;
+}
+
+.action-group legend {
+    font-weight: bold;
+    font-size: 12px;
+    color: #000000;
+    padding: 0 4px;
+}
+
+button:disabled {
+    background: gray;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* ── Button rows ─────────────────────────────────────────────────────────── */
+.btn-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+
+
+.btn-approve,
+.btn-cancel {
+    flex: 1;
+    padding: 6px 0;
+    font-size: 13px;
+    font-weight: bold;
+    color: #ffffff;
+    border: 2px solid;
+    cursor: pointer;
+}
+
+.btn-approve {
+    background: #008000;
+    border-color: #00cc00 #004400 #004400 #00cc00;
+}
+.btn-approve:hover { background: #009900; }
+.btn-approve:active { border-color: #004400 #00cc00 #00cc00 #004400; }
+
+.btn-cancel {
+    background: #cc0000;
+    border-color: #ff4444 #880000 #880000 #ff4444;
+}
+.btn-cancel:hover { background: #dd0000; }
+.btn-cancel:active { border-color: #880000 #ff4444 #ff4444 #880000; }
+
+/* ── Scan Incident ───────────────────────────────────────────────────────── */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    margin-top: 4px;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 13px;
+    height: 13px;
+    cursor: pointer;
+}
+
+.scan-controls {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.scan-controls label {
+    font-size: 12px;
+    color: #000000;
+}
+
+#scan-location {
+    width: 100%;
+    padding: 3px 4px;
+    font-size: 12px;
+    background: #ffffff;
+    border: 2px solid;
+    border-color: #808080 #ffffff #ffffff #808080;
+    outline: none;
+}
+
+#scan-location:disabled {
+    background: #d4d0c8;
+    color: #808080;
+}
+
+.btn-scan {
+    align-self: flex-start;
+    padding: 4px 16px;
+    font-size: 12px;
+    background: #d4d0c8;
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+    cursor: pointer;
+}
+.btn-scan:hover:not(:disabled) { background: #e0ddd8; }
+.btn-scan:active:not(:disabled) { border-color: #808080 #ffffff #ffffff #808080; }
+.btn-scan:disabled { color: #808080; cursor: not-allowed; }
+
+/* ── Exit button ─────────────────────────────────────────────────────────── */
+.exit-row {
+    display: flex;
+    justify-content: center;
+    padding: 10px 8px 8px;
+}
+
+.btn-exit {
+    padding: 6px 32px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #ffffff;
+    background: #cc0000;
+    border: 2px solid;
+    border-color: #ff4444 #880000 #880000 #ff4444;
+    cursor: pointer;
+}
+.btn-exit:hover { background: #dd0000; }
+.btn-exit:active { border-color: #880000 #ff4444 #ff4444 #880000; }
+
+status-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffffff;
+    border-top: 2px solid #808080;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #cc0000;
+}
+
+#status-text {
+    color: #cc0000;
+}

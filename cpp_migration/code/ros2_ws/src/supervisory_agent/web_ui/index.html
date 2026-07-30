@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervisory Dashboard</title>
+    <link rel="stylesheet" href="supervisory_agent_dashboard_styles.css">
+</head>
+<body>
+
+    <div class="window">
+
+        <div class="title-bar">
+            <span class="title-bar-text">Supervisory Dashboard</span>
+        </div>
+
+        <!-- Status history message area -->
+        <div class="history-area-wrap">
+            <textarea id="history-area" readonly></textarea>
+        </div>
+
+        <!-- Inspection -->
+        <fieldset class="action-group">
+            <legend>Inspection</legend>
+            <div class="btn-row">
+                <button class="btn-approve" id="inspection-approve" disabled>Approve</button>
+                <button class="btn-cancel"  id="inspection-cancel" disabled>Cancel</button>
+            </div>
+        </fieldset>
+
+        <!-- Asbestos Analysis -->
+        <fieldset class="action-group">
+            <legend>Analysis</legend>
+            <div class="btn-row">
+                <button class="btn-approve" id="analysis-approve" disabled>Approve</button>
+                <button class="btn-cancel"  id="analysis-cancel" disabled>Cancel</button>
+            </div>
+        </fieldset>
+
+        <!-- Scan Incident -->
+        <fieldset class="action-group">
+            <legend>Scan Incident</legend>
+            <label class="checkbox-label">
+                <input type="checkbox" id="scan-enable"> Enable Scan Incident
+            </label>
+            <div class="scan-controls">
+                <label for="scan-location">Select location:</label>
+                <select id="scan-location" disabled></select>
+                <button class="btn-scan" id="scan-btn" disabled>Scan Incident</button>
+            </div>
+        </fieldset>
+
+        <!-- Exit -->
+        <!-- <div class="exit-row">
+            <button class="btn-exit" id="exit-btn">Exit System</button>
+        </div> -->
+
+        <div class="status-bar">
+            <span>Status:&nbsp;<strong id="status-text">No Mission in Progress</strong></span>
+        </div>
+
+    </div>
+
+    <script src="supervisory_agent_dashboard_ui.js"></script>
+    <script>
+        window.addEventListener('load', () => new DashboardUI());
+    </script>
+
+</body>
+</html>
