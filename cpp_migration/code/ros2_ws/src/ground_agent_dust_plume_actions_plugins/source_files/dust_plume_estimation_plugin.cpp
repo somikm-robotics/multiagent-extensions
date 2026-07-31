@@ -89,11 +89,12 @@ void DustPlumeEstimationPlugin::processResponse(rclcpp::Client<DensityRegressor>
             auto severityLevel = computeSeverityLevel(density);
             auto severityLevelStr = AgentUtils::toSeverityLevelStr(severityLevel);
                     
-            auto message = AgentUtils::getMessage("Predicted density: ", density, " Severity Level", severityLevelStr);
+            auto message = AgentUtils::getMessage("Predicted density: ", density, " Severity Level: ", severityLevelStr);
             RCLCPP_INFO_STREAM(logger_, message);
             result.density = density;
             result.level = severityLevelStr;
             result.success = true;
+            result.message = message;
             
         } else {
             result.success = false;
