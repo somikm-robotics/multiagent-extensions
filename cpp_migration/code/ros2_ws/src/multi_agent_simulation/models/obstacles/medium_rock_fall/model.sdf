@@ -1,0 +1,109 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <model name="medium_rock_fall">
+    <static>true</static>
+    <link name="rock_fall_group">
+
+      <visual name="rock_0">
+        <pose>0 0.264 0.01 0 -0.98 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://medium_rock_fall/meshes/FallingRock04.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <visual name="rock_1">
+        <pose>0.48 0.31 0.01 0 0 -0.56</pose>
+        <geometry>
+          <mesh>
+            <uri>model://medium_rock_fall/meshes/FallingRock04.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <visual name="rock_2">
+        <pose>0 0 0.01 0.73 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://medium_rock_fall/meshes/FallingRock05.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <visual name="rock_3">
+        <pose>0 0.75 0.01 0 -0.52 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://medium_rock_fall/meshes/FallingRock05.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <visual name="rock_4">
+        <pose>-0.1 0.17 0.01 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://medium_rock_fall/meshes/FallingRock06.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <visual name="rock_5">
+        <pose>0.17 0.3 0.01 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://medium_rock_fall/meshes/FallingRock06.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <visual name="rock_6">
+        <pose>0 0.52 0.01 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://medium_rock_fall/meshes/FallingRock06.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <visual name="rock_7">
+        <pose>0.35 -0.3 0.01 0 -0.98 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://medium_rock_fall/meshes/FallingRock04.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <visual name="rock_8">
+        <pose>0 -0.61 0.01 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://medium_rock_fall/meshes/FallingRock05.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <visual name="rock_9">
+        <pose>0.53 -0.63 0.01 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://medium_rock_fall/meshes/FallingRock06.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+    </link>
+  </model>
+</sdf>

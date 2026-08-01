@@ -1,0 +1,50 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+    <model name="wood_case">
+      <static>true</static>
+      <pose>0 0 3.5 0 0 0</pose>
+      <link name="wood_case_link">
+        <inertial>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
+          <mass>1.0</mass>
+        </inertial>
+        <!-- <collision name="wood_case_link_collision">
+          <geometry>
+            <mesh>
+              <uri>model://wood_case/meshes/wall.dae</uri>
+            </mesh>
+          </geometry>
+        </collision> -->
+        <visual name="wood_case_link_visual">
+          <geometry>
+            <mesh>
+              <uri>model://wood_case/meshes/wall.dae</uri>
+            </mesh>
+          </geometry>
+            <material>
+              <diffuse>0.8 0.8 0.8 1</diffuse>
+              <specular>0.6 0.6 0.6 1</specular>
+              <ambient>1.0 1.0 1.0</ambient>
+              <lighting>true</lighting>
+              <emissive>0 0 0 1</emissive>
+              <pbr>
+                <metal>
+                  <albedo_map>model://wood_case/materials/textures/woodCrate_baseColor.png</albedo_map>
+                  <normal_map >model://wood_case/materials/textures/woodCrate_norm_OGL.png</normal_map>
+                  <ambient_occlusion_map>model://wood_case/materials/textures/woodCrate_AO.png</ambient_occlusion_map>
+                  <roughness_map>model://wood_case/materials/textures/woodCrate_roughness.png</roughness_map>
+                  <roughness>0.5</roughness>
+                </metal>
+              </pbr>
+            </material>
+        </visual>
+      </link>
+    </model>
+</sdf>

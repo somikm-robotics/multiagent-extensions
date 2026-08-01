@@ -1,0 +1,39 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <model name="small_rock_fall">
+    <static>true</static>
+    <link name="small_rock_fall_link">
+
+      <visual name="rock_0">
+        <pose>0 0.02 0.01 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://small_rock_fall/meshes/FallingRock06.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <visual name="rock_1">
+        <pose>-0.12 0 0.01 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://small_rock_fall/meshes/FallingRock06.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <visual name="rock_2">
+        <pose>0.08 -0.1 0.01 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://small_rock_fall/meshes/FallingRock06.dae</uri>
+            <scale>0.4 0.4 0.4</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+    </link>
+  </model>
+</sdf>
