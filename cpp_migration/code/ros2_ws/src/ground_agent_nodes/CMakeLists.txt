@@ -172,6 +172,11 @@ install(DIRECTORY config
   DESTINATION share/${PROJECT_NAME}
 )
 
+# Install all .py launch files from the launch/ directory
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 message(STATUS "✅ Ground Agent nodes CMakeLists.txt is running")
 
 
