@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <thread>
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 std::map<HazardType, SimplePose> AgentUtils::hazardPoses_;
 
@@ -23,6 +24,8 @@ std::string AgentUtils::getCurrentTimeFormatString(std::string format)
 
 HazardType AgentUtils::parseHazardType(const std::string hazardTypeStr)
 {
+    //auto logger = rclcpp::get_logger("agent_utils");
+    //RCLCPP_INFO(logger, "Utils Parse: %s", hazardTypeStr.c_str());
     return hazardTypeStr == "DUST_PLUME" ? HazardType::DUST_PLUME : 
                     (hazardTypeStr == "FIBROUS_HAZARD" ? HazardType::FIBROUS_HAZARD : HazardType::NONE);
 }
@@ -55,7 +58,7 @@ CommandType AgentUtils::parseCommandType(const std::string commandTypeStr)
 TaskType AgentUtils::parseTaskType(const std::string taskTypeStr)
 {
     return taskTypeStr == "INITIAL_INSPECTION" ? TaskType::INITIAL_INSPECTION 
-        : (taskTypeStr == "DENSITY_ESTIMATION" ? TaskType::DENSITY_ESTIMATION 
+        : (taskTypeStr == "DUST_PLUME_ACTIONS" ? TaskType::DUST_PLUME_ACTIONS
         : (taskTypeStr == "ASBESTOS_ANALYSIS" ? TaskType::ASBESTOS_ANALYSIS : TaskType::NONE));
 }
 
@@ -99,8 +102,8 @@ std::string AgentUtils::toTaskTypeStr(const TaskType taskType)
         case TaskType::ASBESTOS_ANALYSIS:
             taskTypeStr = "ASBESTOS_ANALYSIS";
             break;
-        case TaskType::DENSITY_ESTIMATION:
-            taskTypeStr = "DENSITY_ESTIMATION";
+        case TaskType::DUST_PLUME_ACTIONS:
+            taskTypeStr = "DUST_PLUME_ACTIONS";
             break;
         default:
             taskTypeStr = "NONE";
@@ -123,6 +126,9 @@ std::string AgentUtils::toOrbitModeStr(const OrbitMode orbitMode)
             break;
         case OrbitMode::TANGENT_ALIGN:
             orbitModeStr = "TANGENT_ALIGN";
+            break;
+        case OrbitMode::ORBIT:
+            orbitModeStr = "ORBIT";
             break;
         default:
             orbitModeStr = "NONE";
@@ -196,11 +202,12 @@ HazardTypePose AgentUtils::getCurrentHazardTypePose()
     auto hazardTypeStr = config.value("current_hazard_target", "FIBROUS_HAZARD");
     auto parsedHazardType = parseHazardType(hazardTypeStr);
     auto itr = hazardPoses_.find(parsedHazardType);
-    auto hazardPoses =  itr != hazardPoses_.end() ? itr->second : SimplePose{};
+    auto hazardPose =  itr != hazardPoses_.end() ? itr->second : SimplePose{};
 
     HazardTypePose hazardTypePose {
         parsedHazardType,
-        hazardPoses
+        hazardPose,
+        0.0
     };
 
     return hazardTypePose;
@@ -218,7 +225,7 @@ double AgentUtils::calculateOrbitSafetyRadius(const HazardType hazardType, const
     auto standoffRadius = getStandOffRadius(hazardType);
     auto rCamera = (hazardDiameter/2) / tan(fovRad / 2);
     auto rRobot = hypot(robotLM/2, robotWM /2) + maginM;
-    return std::max({static_cast<double>(standoffRadius), rCamera, rRobot});
+    return std::max({static_cast<double>(standoffRadius), rCamera, static_cast<double>(rRobot)});
 }
 
 bool AgentUtils::isOrbitClockwise()
@@ -227,15 +234,22 @@ bool AgentUtils::isOrbitClockwise()
     return config.value("is_orbit_clockwise", true) == true;
 }
 
-std::array<float, 4> AgentUtils::yawtoQuat(const float yaw)
-{
-    std::array<float, 4> quat;
-    quat[0] = 0.0;
-    quat[1] = 0.0;
-    quat[2] = sin(yaw * 0.5);
-    quat[3] = cos(yaw * 0.5);
+// std::array<float, 4> AgentUtils::yawtoQuat(const float yaw)
+// {
+//     std::array<float, 4> quat;
+//     quat[0] = 0.0;
+//     quat[1] = 0.0;
+//     quat[2] = sin(yaw * 0.5);
+//     quat[3] = cos(yaw * 0.5);
 
-    return quat;
+//     return quat;
+// }
+
+tf2::Quaternion AgentUtils::yawtoQuat(const float yaw) 
+{
+    tf2::Quaternion q;
+    q.setRPY(0, 0, yaw);
+    return q;
 }
 
 float AgentUtils::quatToYaw(const geometry_msgs::msg::Quaternion& quat)

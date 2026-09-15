@@ -26,6 +26,7 @@ find_package(ignition-gazebo6 REQUIRED)
 find_package(ignition-plugin1 REQUIRED)
 find_package(transport_interfaces REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(tf2 REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(ament_index_cpp REQUIRED)
@@ -35,11 +36,14 @@ find_package(ignition-math6 REQUIRED)
 # shared infrastructure
 add_library(shared_infrastructure SHARED
   source_files/agent_utils.cpp
+  source_files/data.cpp
 )
 
 ament_target_dependencies(shared_infrastructure
   geometry_msgs
   ament_index_cpp
+  rclcpp
+  tf2
 )
 
 target_include_directories(shared_infrastructure PUBLIC
@@ -154,6 +158,8 @@ install(TARGETS test_helpers
 
 target_link_libraries(test_helpers
   ignition-math6::ignition-math6
+  Boost::boost
+  Boost::filesystem
 )
 
 ament_export_targets(export_test_helpers HAS_LIBRARY_TARGET)

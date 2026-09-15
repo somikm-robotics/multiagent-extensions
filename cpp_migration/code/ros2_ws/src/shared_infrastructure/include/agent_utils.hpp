@@ -20,6 +20,7 @@
 
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <tf2/LinearMath/Quaternion.h>
 
 namespace bp = boost::process;
 
@@ -65,7 +66,7 @@ public:
 
     static bool isOrbitClockwise();
 
-    static std::array<float, 4> yawtoQuat(const float yaw);
+    static tf2::Quaternion yawtoQuat(const float yaw);
 
     static float quatToYaw (const geometry_msgs::msg::Quaternion& quat);
 
