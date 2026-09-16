@@ -2,6 +2,7 @@
 
 #include "pluginlib/class_list_macros.hpp"
 #include <array>
+#include <sstream>
 
 #include "agent_utils.hpp"
 
@@ -30,12 +31,17 @@ void DustSensorRelayPlugin::initialise(const rclcpp::Node::SharedPtr &node)
 void DustSensorRelayPlugin::publishDustSensorResult()
 {
     startPublish_ = true;
+    RCLCPP_INFO_STREAM(logger_, "start pub " << startPublish_);  
 }
 
 void DustSensorRelayPlugin::sensorCallback(transportMsgs::DustSensorResult dustSensorResultMsg)
 {
+    // RCLCPP_INFO_STREAM(logger_, "max pub count: " << configParams_.MaxPublishCount 
+    //                         << "startPublish: " << startPublish_ 
+    //                         << "Min values availability" << configParams_.MinValuesAvailibity);
     if(!startPublish_ || currentPubCtr_ > configParams_.MaxPublishCount)
         return;
+
     
    std::array<float, 3> pmValues { dustSensorResultMsg.pm1_0, dustSensorResultMsg.pm2_5, dustSensorResultMsg.pm10};
    auto availableCount = std::count_if(pmValues.begin(), 
@@ -43,15 +49,11 @@ void DustSensorRelayPlugin::sensorCallback(transportMsgs::DustSensorResult dustS
                                         [this](const auto& val) {
                                             return val > this->configParams_.PublishThreshold;  
                                         });
-                
+           
+    //RCLCPP_INFO_STREAM(logger_, "available count: " << availableCount);                                         
     if(availableCount >= configParams_.MinValuesAvailibity  ) {
-        dustSensorResultMsg.success = true;
-        resultPub_->publish(dustSensorResultMsg);
-        currentPubCtr_++;
-        RCLCPP_INFO(logger_, "Dust detected – published reading");
-        RCLCPP_INFO_STREAM(
-            logger_,
-            std::fixed
+        std::ostringstream stream;
+        stream << "Dust Sensor Results: " << std::fixed
             << "PM1.0=" << std::setprecision(1) << dustSensorResultMsg.pm1_0 << " µg/m³, "
             << "PM2.5=" << std::setprecision(1) << dustSensorResultMsg.pm2_5 << " µg/m³, "
             << "PM10=" << std::setprecision(1) << dustSensorResultMsg.pm10 << " µg/m³, "
@@ -60,7 +62,13 @@ void DustSensorRelayPlugin::sensorCallback(transportMsgs::DustSensorResult dustS
             << "Wind=" << std::setprecision(1) << dustSensorResultMsg.wind_speed << " m/s @ "
             << std::setprecision(0) << dustSensorResultMsg.wind_direction << "°, "
             << "RH=" << std::setprecision(0) << dustSensorResultMsg.humidity << " %, "
-            << "Temp=" << std::setprecision(1) << dustSensorResultMsg.temperature << " °C");
+            << "Temp=" << std::setprecision(1) << dustSensorResultMsg.temperature << " °C";
+        dustSensorResultMsg.success = true;
+        dustSensorResultMsg.message = stream.str();
+        resultPub_->publish(dustSensorResultMsg);
+        currentPubCtr_++;
+        RCLCPP_INFO(logger_, "Dust detected – published reading");
+        RCLCPP_INFO_STREAM(logger_, dustSensorResultMsg.message.c_str());
     }
 }
 
