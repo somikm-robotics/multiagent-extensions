@@ -1,0 +1,29 @@
+{
+    "Locations": {
+        "Loc1": {
+            "x": 0.0,
+            "y": -1.0,
+            "hazard": "FIBROUS_HAZARD",
+            "diameter": 6.0
+        },
+        "Loc2": {
+            "x": 1.5,
+            "y": 4.0,
+            "hazard": "FIBROUS_HAZARD",
+            "diameter": 6.0
+        },
+        "Loc3": {
+            "x": 6.0,
+            "y": 0.0,
+            "hazard": "DUST_PLUME",
+            "diameter": 5.0
+        },
+        "Loc4": {
+            "x": -7.0,
+            "y": -8.0,
+            "hazard": "DUST_PLUME",
+            "diameter": 8.0
+
+        }
+    }
+}
