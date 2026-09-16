@@ -3,6 +3,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "nav2_msgs/action/follow_waypoints.hpp"
+#include "nav2_msgs/action/follow_path.hpp"
 #include <memory>
 
 #include "navigation_plugin/navigation_plugin_base.hpp"
@@ -12,8 +13,12 @@
 
 namespace transportMsgs = transport_interfaces::msg;
 
-using FollowWaypoints = nav2_msgs::action::FollowWaypoints;
-using GoalHandle = rclcpp_action::ClientGoalHandle<FollowWaypoints>;
+// using FollowWaypoints = nav2_msgs::action::FollowWaypoints;
+// using GoalHandle = rclcpp_action::ClientGoalHandle<FollowWaypoints>;
+
+using FollowPath = nav2_msgs::action::FollowPath;
+using GoalHandle = rclcpp_action::ClientGoalHandle<FollowPath>;
+
 
 class Nav2NavigationPlugin : public NavigationPluginBase {
 public:
@@ -32,14 +37,18 @@ private:
     rclcpp::Service<Navigate>::SharedPtr navigateService_;    
 
     // Nav2 client 
-    rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SharedPtr followWaypointsClient_;
-    
+    //rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SharedPtr followWaypointsClient_;
+    rclcpp_action::Client<nav2_msgs::action::FollowPath>::SharedPtr followPathClient_;
+
     rclcpp::Node::WeakPtr node_;
     rclcpp::Logger logger_;
 
     // future handlers
-    void followWaypointsGoalResponse(GoalHandle::SharedPtr goal_handle);
-    void followWaypointsResult(const GoalHandle::WrappedResult& result);
+    // void followWaypointsGoalResponse(GoalHandle::SharedPtr goal_handle);
+    // void followWaypointsResult(const GoalHandle::WrappedResult& result);
+
+    void followPathGoalResponse(GoalHandle::SharedPtr goal_handle);
+    void followPathResult(const GoalHandle::WrappedResult& result);
 
     // variables
     float serviceTimeout_;
