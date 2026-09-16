@@ -75,11 +75,16 @@ void MissionHandlerNode::hazardDetectedCallback(const transportMsgs::HazardPose&
 {
 	RCLCPP_INFO_STREAM(this->get_logger(), "Ground Agent received " << hazardPoseMessage.hazard_type);
 
+
 	if(!isAtBase_) {
 		RCLCPP_INFO(this->get_logger(), "Hazard Processing in progress");
 		return;
 	}
+
+	RCLCPP_INFO_STREAM(this->get_logger(), "hazard center point: x: " << hazardPoseMessage.hazard_center_point.x << " y: " << hazardPoseMessage.hazard_center_point.y );
 	
+	RCLCPP_INFO_STREAM(this->get_logger(), "hazard pose: x: " << hazardPoseMessage.pose.position.x << " y: " << hazardPoseMessage.pose.position.y );
+
 	hazardReceived_ = true;
 	hazardTypeStr_ = hazardPoseMessage.hazard_type;
 	hazardType_ = AgentUtils::parseHazardType(hazardPoseMessage.hazard_type);
@@ -115,7 +120,8 @@ void MissionHandlerNode::handleOverride(std::shared_ptr<OverrideMission::Request
 													: "Cancelled! Supervisor aborted the mission";
 	if(commandType == CommandType::APPROVED) {
 		response->status = "Dispatched";
-		this->publishIntermediaryStatus(msg, true);
+		response->success = true;
+		this->publishIntermediaryStatus(msg, false);
 		RCLCPP_INFO_STREAM(this->get_logger(), msg);
 
 		if(hazardReceived_) {
@@ -136,9 +142,10 @@ void MissionHandlerNode::handleOverride(std::shared_ptr<OverrideMission::Request
 		if(taskType_ == TaskType::ASBESTOS_ANALYSIS)
 			orbitApproved_ = false;
 		response->status = "cancelled";
+		response->success = false;
 		RCLCPP_INFO_STREAM(this->get_logger(), msg);
 		hazardReceived_ = false;
-		this->publishIntermediaryStatus(msg, true);
+		this->publishIntermediaryStatus(msg, false);
 	}
 
 }
@@ -168,7 +175,7 @@ void MissionHandlerNode::checkOverrideStatus()
 					overrideTimerStep2_->cancel();
 				}
 			}
-			this->publishIntermediaryStatus(msg, true);
+			this->publishIntermediaryStatus(msg, false);
 
 			if(taskType_ == TaskType::INITIAL_INSPECTION) {
 				this->requestPathForNavigation();
@@ -189,6 +196,11 @@ void MissionHandlerNode::checkOverrideStatus()
 void MissionHandlerNode::reachedTargetCallback(const transportMsgs::NavigationResult& resultMessage)
 {
 	RCLCPP_INFO(this->get_logger(), "In reach target callback: is return ?: %s", isReturn_ ? "True" : "False");
+	if(!resultMessage.success)	{
+		RCLCPP_ERROR(this->get_logger(), "Some error in navigation. Did not reach target");
+		return;
+	}
+
 	try {
 		if(isReturn_) {
 			this->setNextTaskType();
@@ -222,21 +234,22 @@ void MissionHandlerNode::onArrivalTaskCompletion(
 		return;
 	}
 	RCLCPP_INFO(this->get_logger(), msg.c_str());
-	this->publishIntermediaryStatus(arrivalTaskCompletionMessage.message, false);
+	this->publishIntermediaryStatus(arrivalTaskCompletionMessage.message, 
+				hazardType_ == HazardType::FIBROUS_HAZARD);
 
 	this->startReturnToBase(arrivalTaskCompletionMessage);
 }
 
 
 void MissionHandlerNode::publishIntermediaryStatus(
-	std::string& message, const bool toggleCommand)
+	std::string& message, const bool requiresAnalysis)
 {
 	transportMsgs::MissionStatus missionStatusMessage;
 	missionStatusMessage.hazard_type = AgentUtils::toHazardTypeString(hazardType_);
 	missionStatusMessage.task_type = AgentUtils::toTaskTypeStr(taskType_);
 	missionStatusMessage.message = message;
 	missionStatusMessage.success = true;
-	missionStatusMessage.toggle_command = toggleCommand;
+	missionStatusMessage.requires_analysis = requiresAnalysis;
 
 	intermediadyMissionStatusPub_->publish(missionStatusMessage);
 	RCLCPP_INFO_STREAM(this->get_logger(), "Intermediary status: " << message << " published.");
@@ -269,8 +282,11 @@ void MissionHandlerNode::requestPathForNavigation()
 
 	try {
 		RequestPathPlan::Goal request;
-		request.goal = isReturn_ ? returnPose_ : (taskType_ == TaskType::INITIAL_INSPECTION ? hazardPose_ : hazardOrbitPose_);
+		RCLCPP_INFO_STREAM(this->get_logger(), "hazard pose: x: "  << hazardPose_.position.x << " y: " << hazardPose_.position.y );
+
+		request.goal = isReturn_ ? returnPose_ : (taskType_ == TaskType::ASBESTOS_ANALYSIS ? hazardOrbitPose_ : hazardPose_);
 		//request.is_return = isReturn_;
+
 		SendGoalOptions sendOptions;
 		sendOptions.result_callback = std::bind(&MissionHandlerNode::handlePathPlanResult, this,
 														std::placeholders::_1);
@@ -335,6 +351,7 @@ void MissionHandlerNode::setNextTaskType()
 		case HazardType::DUST_PLUME:
 			taskType_ = TaskType::NONE;
 			tasksDone_ = true;
+			isReturn_ = false;
 			break;
 		case HazardType::FIBROUS_HAZARD:
 			if(taskType_ == TaskType::INITIAL_INSPECTION) {
