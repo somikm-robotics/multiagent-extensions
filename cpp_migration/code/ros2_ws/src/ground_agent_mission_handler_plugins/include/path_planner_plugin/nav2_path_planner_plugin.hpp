@@ -42,7 +42,7 @@ private:
     static std::vector<PoseStamped> decimate(nav_msgs::msg::Path path, rclcpp::Logger logger);
 
     // variables
-    inline static const float SPACING = 2.0;
+    inline static const float SPACING = 0.4;
     inline static const float EUCLID = 1e-3;
     inline static const float FIRSTPOSEDIFFERENCE = 0.05;
 };
