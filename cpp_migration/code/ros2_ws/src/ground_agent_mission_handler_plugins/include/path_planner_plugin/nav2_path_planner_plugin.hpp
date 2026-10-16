@@ -22,7 +22,7 @@ public:
 
         void initialise(const rclcpp::Node::SharedPtr & node) override;
         
-        void plan_path(RequestPathPlan::Goal request,
+        void planPath(RequestPathPlan::Goal request,
             SendGoalOptions options) override;
 
         ~Nav2PathPlannerPlugin() override = default;
@@ -41,8 +41,11 @@ private:
     
     static std::vector<PoseStamped> decimate(nav_msgs::msg::Path path, rclcpp::Logger logger);
 
+    void setOrientation(std::vector<PoseStamped>& poses);
+
     // variables
-    inline static const float SPACING = 0.4;
+    bool isReturn = false;
+    inline static const float SPACING = 7.5;
     inline static const float EUCLID = 1e-3;
     inline static const float FIRSTPOSEDIFFERENCE = 0.05;
 };

@@ -6,6 +6,7 @@
 #include "pluginlib/class_list_macros.hpp"
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+
 Nav2PathPlannerPlugin::Nav2PathPlannerPlugin() 
 			: PathPlannerPlugin("Nav2PathPlannerPlugin")
 {
@@ -49,12 +50,15 @@ void Nav2PathPlannerPlugin::computePathResult(const GoalHandle::WrappedResult &r
 
 	auto waypoints = decimate(path, logger_);
 
-	//RCLCPP_INFO_STREAM(logger_, "Down-sampled to before erase start" << waypoints.size() << " poses");
+	RCLCPP_INFO_STREAM(logger_, "Down-sampled to before erase start" << waypoints.size() << " poses");
 
-	// if(!waypoints.empty() && AgentUtils::getPoseDistance(waypoints[0], path.poses[0]) < FIRSTPOSEDIFFERENCE)
-	// 	waypoints.erase(waypoints.begin());
+	if(!waypoints.empty() && AgentUtils::getPoseDistance(waypoints[0], path.poses[0]) < FIRSTPOSEDIFFERENCE)
+		waypoints.erase(waypoints.begin());
 
 	RCLCPP_INFO_STREAM(logger_, "Down-sampled to " << waypoints.size() << " poses");
+
+	// compute orientation
+	setOrientation(waypoints);
 
 	for (auto &w : waypoints)
 	{
@@ -130,8 +134,38 @@ std::vector<PoseStamped> Nav2PathPlannerPlugin::decimate(nav_msgs::msg::Path pat
 	return prunedWayPoints;
 }
 
-void Nav2PathPlannerPlugin::plan_path(RequestPathPlan::Goal request, SendGoalOptions options)
+void Nav2PathPlannerPlugin::setOrientation(std::vector<PoseStamped> &poses)
 {
+	// robot's pos in travel order
+	tf2::Quaternion qLast;
+	for(size_t i = 0; i + 1 < poses.size(); i++){
+		double dx = poses[i+1].pose.position.x - poses[i].pose.position.x;
+		double dy = poses[i+1].pose.position.y - poses[i].pose.position.y;
+		auto q = AgentUtils::yawtoQuat(std::atan2(dy, dx));
+		poses[i].pose.orientation = tf2::toMsg(q);
+		qLast = q;
+	}
+
+	// if(isReturn) {
+	// 	// we want it to spin to reverse itself after reaching base
+	// 	size_t totalPoses = poses.size();
+	// 	double dx = poses[totalPoses-2].pose.position.x - poses[totalPoses-1].pose.position.x;
+	// 	double dy = poses[totalPoses-2].pose.position.y - poses[totalPoses - 1].pose.position.y;
+	// 	auto q = AgentUtils::yawtoQuat(std::atan2(dy, dx));
+	// 	poses.back().pose.orientation = tf2::toMsg(q);
+
+	// } else {
+		// last pose - same as last pos
+	poses.back().pose.orientation = tf2::toMsg(qLast);
+	//}
+
+	
+
+}
+
+void Nav2PathPlannerPlugin::planPath(RequestPathPlan::Goal request, SendGoalOptions options)
+{
+	isReturn = request.is_return;
 	requestOptions_ = options;
 	try {
 		if(!computePathToPoseClient_->wait_for_action_server(std::chrono::duration<float>(serviceTimeout_))) {
