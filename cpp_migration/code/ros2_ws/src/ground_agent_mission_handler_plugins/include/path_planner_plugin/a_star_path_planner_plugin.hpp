@@ -12,7 +12,7 @@ class AStarPathPlannerPlugin : public PathPlannerPlugin {
 public:
     AStarPathPlannerPlugin();
 
-    void plan_path(RequestPathPlan::Goal request,
+    void planPath(RequestPathPlan::Goal request,
             SendGoalOptions options) override;
 
     ~AStarPathPlannerPlugin() override = default;

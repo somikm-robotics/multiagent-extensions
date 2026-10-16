@@ -12,7 +12,7 @@ public:
 
     void initialise(const rclcpp::Node::SharedPtr & node) override = 0;
 
-    virtual void plan_path(
+    virtual void planPath(
         RequestPathPlan::Goal request, SendGoalOptions options) override = 0;
 
     ~PathPlannerPlugin() override = default;
