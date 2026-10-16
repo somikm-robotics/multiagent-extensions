@@ -4,7 +4,6 @@
 #include <string>
 #include <nlohmann/json.hpp>
 
-
 struct SimplePose {
     float x;
     float y;
@@ -12,18 +11,18 @@ struct SimplePose {
     float yaw;
 };
 
-inline void from_json(const nlohmann::json &config, SimplePose& pose)
-{
-    config.at("x").get_to(pose.x);
-    config.at("y").get_to(pose.y);
-    config.at("z").get_to(pose.z);
-    config.at("yaw").get_to(pose.yaw);
-}
 
 struct HazardTypePose {
     HazardType hazardType;
     SimplePose hazardPose;
+    float hazardDimeter;
 };
+
+void from_json(const nlohmann::json &config, SimplePose& pose);
+
+void from_json(const nlohmann::json &config, HazardType& hazardType);
+
+void from_json(const nlohmann::json &config, HazardTypePose& hazardTypePose);
 
 struct OrbitHazardConfigParams {
     bool isOrbitClockwise;
@@ -72,4 +71,11 @@ struct DustSensorRelayParams {
     int MaxPublishCount;
     float PublishThreshold;
     int MinValuesAvailibity;
+};
+
+struct TFLookupParams {
+    std::string BaseFrame;
+    std::string OdomFrame;
+    std::string MapFrame;
+    float TFLookupTimeoutInSecs;
 };
