@@ -98,13 +98,13 @@
   <!-- hazard overlay-->
   <include>
       <uri>model://asbestos_marker</uri>
-      <pose>-2.5 0.0 0.1 0 0 0</pose>  
+      <pose>-2.5 -4.0 0.1 0 0 0</pose>  
   </include>
 
 
   <include>
       <uri>model://dust_plume_marker</uri>
-      <pose>6.5 2.0 0.50 0 0 0</pose>  
+      <pose>6.5 3.0 0.50 0 0 0</pose>  
   </include>
 
   <!-- walls-->

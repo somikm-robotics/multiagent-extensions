@@ -1,2 +1,2 @@
 string command
-bool is_initial_inspection
+bool is_orbit

@@ -4,7 +4,7 @@ enum class HazardType : int { NONE = 0, DUST_PLUME = 1, FIBROUS_HAZARD, TOXIC_GA
 
 enum class TaskType: int { NONE = 0, INITIAL_INSPECTION = 1, DUST_PLUME_ACTIONS, ASBESTOS_ANALYSIS};
 
-enum class CommandType: int {NONE = 0, APPROVED = 1, CANCELLED };
+enum class CommandType: int {NONE = 0, APPROVED = 1, CANCELLED = 2 };
 
 enum class Edge: int { NORTH = 1, SOUTH, EAST, WEST };
 

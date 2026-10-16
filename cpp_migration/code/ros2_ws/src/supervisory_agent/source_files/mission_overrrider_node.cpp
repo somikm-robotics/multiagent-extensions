@@ -77,19 +77,16 @@ void MissionOverrideNode::overrideMission(const OverrideMission::Request::Shared
         return;
     }
 
-    auto future = overrideMissionClient_->async_send_request(request);
+    RCLCPP_INFO(this->get_logger(), "In override mission sending request");
 
-    if(future.wait_for(std::chrono::minutes(serviceTimeout_)) == std::future_status::timeout) {
-        auto msg = "Override Mission Service call timed out";
-        RCLCPP_INFO(this->get_logger(), msg);
-        response->success = false;
-        response->status = msg;
-        return;
-    }
+    overrideMissionClient_->async_send_request(request, [response, this](
+        rclcpp::Client<OverrideMission>::SharedFuture future){
+            auto ssResponse = future.get();
+            response->success = ssResponse->success;
+            response->status = ssResponse->status;
+            RCLCPP_INFO(this->get_logger(), "In override mission: %s", response->status.c_str());
 
-    auto ssResponse = future.get();
+    });
     
-    response->success = ssResponse->success;
-    response->status = ssResponse->status;
 
 }

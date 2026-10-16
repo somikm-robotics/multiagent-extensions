@@ -2,3 +2,4 @@ string command    # must be 'approve' or 'cancel'
 bool is_initial_inspection # True if TaskType = 'Initial Inspection'
 ---
 string status     # e.g., "dispatched" or "cancelled"
+bool success

@@ -146,6 +146,14 @@ target_link_libraries(supervisory_agent_web_server_exec
   supervisory_agent_server_lib
 )
 
+target_include_directories(supervisory_agent_web_server_exec PRIVATE
+     ${httplib_SOURCE_DIR}
+)
+
+target_include_directories(supervisory_agent_server_lib PRIVATE
+    ${httplib_SOURCE_DIR}
+)
+
 install(TARGETS
   supervisory_agent_server_lib
   supervisory_agent_web_server_exec

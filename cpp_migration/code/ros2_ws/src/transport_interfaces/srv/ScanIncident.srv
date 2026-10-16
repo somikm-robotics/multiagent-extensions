@@ -1,0 +1,6 @@
+#Request
+string location_name
+---
+#Response
+bool accepted
+string message

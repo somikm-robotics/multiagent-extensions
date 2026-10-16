@@ -1,0 +1,5 @@
+string message
+bool enable_inspection
+bool enable_analysis
+bool is_status
+bool enable_scan
