@@ -1,5 +1,6 @@
 #include "path_planner_plugin/path_planner_plugin.hpp"
-#include "agent_utils.hpp"#include "path_planner_plugin.hpp"
+#include "agent_utils.hpp"
+
 
 PathPlannerPlugin::PathPlannerPlugin(std::string pluginName) 
             : logger_{rclcpp::get_logger(pluginName)}

@@ -2,8 +2,9 @@
 #include <memory>
 #include "dust_plume_actions_node.hpp"
 
-int main(int argc, char** argv) {
-
+int main(int argc, char** argv) 
+{
+    rclcpp::init(argc, argv);
     auto node = std::make_shared<DustPlumeActionsNode>();
     node->initialise();
     try {
