@@ -11,8 +11,9 @@
 #include "test_helpers/nav2/fake_nav2_follow_path_server.hpp"
 #include "test_helpers/nav2/fake_nav2_set_parameter_server.hpp"
 #include "test_helpers/fake_dust_sensor_replay_publisher_node.hpp"
-#include "test_helpers/nav2/fake_nav2_follow_waypoints_server.hpp"
+#include "test_helpers/nav2/fake_nav2_navigate_through_poses_server.hpp"
 #include "test_helpers/nav2/fake_nav2_compute_path_to_pose_server.hpp"
+#include "test_helpers/nav2/fake_nav2_spin_server.hpp"
 #include "test_helpers/test_utils.hpp"
 
 #include "dust_plume_actions_node.hpp"
@@ -40,21 +41,25 @@ protected:
 
         // common fakes
         auto fakeComputePathToPoseServer = std::make_shared<FakeComputePathToPoseServer>();
-        auto fakeFollowWayPointsServer = std::make_shared<FakeFollowWaypointsServer>();
+        auto fakeNavigateThroughPosesServer = std::make_shared<FakeNavigateThroughPosesServer>();
+        auto fakeSpinServer = std::make_shared<FakeSpinServer>();
+
         auto fakeImagePubNode = std::make_shared<FakeImagePublisherNode>();
         auto fakeOdomPubNode = std::make_shared<FakeOdomPublisherNode>();
         auto fakeTwistSubNode = std::make_shared<FakeTwistSubscriberNode>();
         auto fakeTFPubNode = std::make_shared<FakeTFPublisherNode>();
         
         fakeNodes_.push_back(fakeComputePathToPoseServer);
-        fakeNodes_.push_back(fakeFollowWayPointsServer);
+        fakeNodes_.push_back(fakeNavigateThroughPosesServer);
+        fakeNodes_.push_back(fakeSpinServer);
         fakeNodes_.push_back(fakeImagePubNode);
         fakeNodes_.push_back(fakeOdomPubNode);
         fakeNodes_.push_back(fakeTwistSubNode);
         fakeNodes_.push_back(fakeTFPubNode);
 
         executor_.add_node(fakeComputePathToPoseServer);
-        executor_.add_node(fakeFollowWayPointsServer);
+        executor_.add_node(fakeNavigateThroughPosesServer);
+        executor_.add_node(fakeSpinServer);
         executor_.add_node(fakeImagePubNode);
         executor_.add_node(fakeOdomPubNode);
         executor_.add_node(fakeTwistSubNode);
@@ -108,7 +113,7 @@ protected:
 
         auto start = std::chrono::steady_clock::now();
         while (rclcpp::ok() && !messageReceived_ &&
-            std::chrono::steady_clock::now() - start < std::chrono::seconds(300))
+            std::chrono::steady_clock::now() - start < std::chrono::seconds(120))
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
