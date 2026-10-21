@@ -8,6 +8,9 @@
 #include <memory>
 #include <vector>
 
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
@@ -19,11 +22,11 @@
 #include "transport_interfaces/msg/navigation_result.hpp"
 #include "transport_interfaces/msg/on_arrival_task.hpp"
 #include "transport_interfaces/msg/base_return.hpp"
+#include "transport_interfaces/msg/mission_completed.hpp"
 
 #include "transport_interfaces/srv/override_mission.hpp"
-#include "transport_interfaces/srv/navigate_request.hpp"
 #include "transport_interfaces/srv/navigate.hpp"
-
+#include "transport_interfaces/srv/rotate_to_position.hpp"
 #include "transport_interfaces/action/request_path_plan.hpp"
 
 #include "shared_infrastructure/enums.hpp"
@@ -32,6 +35,7 @@
 namespace transportMsgs = transport_interfaces::msg;
 using OverrideMission = transport_interfaces::srv::OverrideMission;
 using Navigate = transport_interfaces::srv::Navigate;
+using RotateToPosition = transport_interfaces::srv::RotateToPosition;
 
 using RequestPathPlan = transport_interfaces::action::RequestPathPlan;
 using GoalHandleRequestPathPlan = rclcpp_action::ClientGoalHandle<RequestPathPlan>;
@@ -56,6 +60,7 @@ private:
     rclcpp::Subscription<transportMsgs::HazardPose>::SharedPtr hazardDetectedSub_;
     rclcpp::Subscription<transportMsgs::NavigationResult>::SharedPtr navigationResultSub_;
     rclcpp::Subscription<transportMsgs::MissionStatus>::SharedPtr onArrivalTaskCompletionSub_;
+    rclcpp::Subscription<transportMsgs::MissionCompleted>::SharedPtr parkingCompletedSub_;
 
     //services
     rclcpp::Service<OverrideMission>::SharedPtr overrideMissionService_;
@@ -64,6 +69,7 @@ private:
     void hazardDetectedCallback(const transportMsgs::HazardPose& hazardPoseMessage);
     void reachedTargetCallback(const transportMsgs::NavigationResult& resultMessage);
     void onArrivalTaskCompletion(transportMsgs::MissionStatus arrivalTaskCompletionMessage);
+    void completedParking(transportMsgs::MissionCompleted parkingCompletedMessage);
 
     // service methods
     void handleOverride(std::shared_ptr<OverrideMission::Request> request, 
@@ -71,11 +77,12 @@ private:
     
     // methods
     void checkOverrideStatus();
-    void publishIntermediaryStatus(std::string& message, const bool toggleCommand);
+    void publishIntermediaryStatus(std::string& message, const bool success = true, const bool requiresAnalysis = false);
     geometry_msgs::msg::Pose getReturnPose();
     void setOrbitGoal();
     void requestPathForNavigation();
     void sendNavigationCommand(std::vector<geometry_msgs::msg::PoseStamped>& waypoints);
+    void sendParkingCommand();
     void waitForApprovalOrTimeout();
     void publishOnArrivalTask();
     void setNextTaskType();
@@ -115,5 +122,9 @@ private:
     rclcpp::TimerBase::SharedPtr overrideTimerStep2_;
     geometry_msgs::msg::Pose hazardOrbitPose_;
     geometry_msgs::msg::Pose returnPose_;
+    std::shared_ptr<tf2_ros::Buffer> tfBuffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tfListener_;
+    rclcpp::TimerBase::SharedPtr parkingTfLookupCallTimer_;
+    rclcpp::TimerBase::SharedPtr parkingTfLookupTimeoutTimer_;
 
 };

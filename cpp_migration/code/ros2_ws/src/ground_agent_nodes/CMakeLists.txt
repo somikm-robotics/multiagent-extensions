@@ -9,13 +9,16 @@ find_package(pluginlib REQUIRED)
 find_package(transport_interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(Boost REQUIRED COMPONENTS filesystem)
+find_package(ignition-math6 REQUIRED)
+find_package(ament_cmake_gtest REQUIRED)
+
 find_package(ground_agent_on_arrival_task_plugins REQUIRED)
 find_package(ground_agent_mission_handler_plugins REQUIRED)
 find_package(ground_agent_dust_plume_actions_plugins REQUIRED)
 find_package(shared_infrastructure REQUIRED)
-find_package(Boost REQUIRED COMPONENTS filesystem)
-find_package(ignition-math6 REQUIRED)
-find_package(ament_cmake_gtest REQUIRED)
 
 include_directories(
   include
@@ -35,6 +38,8 @@ ament_target_dependencies(mission_handler_node
   rclcpp_action
   shared_infrastructure
   pluginlib
+  tf2
+  tf2_geometry_msgs
 )
 
 ament_add_gtest(mission_handler_node_test
@@ -62,6 +67,8 @@ ament_target_dependencies(mission_handler_node_exec
   rclcpp_action
   shared_infrastructure
   pluginlib
+  tf2
+  tf2_geometry_msgs
 )
 
 target_link_libraries(mission_handler_node_exec
