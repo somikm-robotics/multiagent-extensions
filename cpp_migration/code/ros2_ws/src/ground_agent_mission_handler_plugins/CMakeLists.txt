@@ -13,6 +13,7 @@ find_package(shared_infrastructure REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem)
 find_package(ament_cmake_gtest REQUIRED)
 find_package(ignition-math6 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 include_directories(
   include
@@ -38,11 +39,11 @@ ament_target_dependencies(navigation_plugin
   shared_infrastructure
 )
 
-ament_add_gtest(nav2_navigation_plugin_test
-  test/nav2_navigation_plugin_test.cpp
+ament_add_gtest(nav2_navigation_plugin_tests
+  test/nav2_navigation_plugin_tests.cpp
 )
 
-ament_target_dependencies(nav2_navigation_plugin_test
+ament_target_dependencies(nav2_navigation_plugin_tests
   rclcpp
   transport_interfaces
   pluginlib
@@ -51,7 +52,7 @@ ament_target_dependencies(nav2_navigation_plugin_test
   shared_infrastructure
 )
 
-target_link_libraries(nav2_navigation_plugin_test
+target_link_libraries(nav2_navigation_plugin_tests
                       navigation_plugin)
 
 
@@ -90,6 +91,7 @@ ament_target_dependencies(path_planner_plugin
   rclcpp_action
   nav2_core
   shared_infrastructure
+  tf2_geometry_msgs
 )
 
 ament_add_gtest(nav2_path_planner_plugin_test
@@ -136,6 +138,7 @@ ament_export_dependencies(
   nav2_core
   rclcpp_action
   shared_infrastructure
+  tf2_geometry_msgs
 )
 
 message(STATUS "✅ Ground Agent - ground_agent_mission_handler_plugins CMakeLists.txt is running")

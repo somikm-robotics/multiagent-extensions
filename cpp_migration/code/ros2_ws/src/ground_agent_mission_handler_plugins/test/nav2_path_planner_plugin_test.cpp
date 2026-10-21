@@ -75,7 +75,7 @@ TEST(Nav2PathPlannerPluginTests, PathPlanningSuccess)
     };
 
     RCLCPP_INFO(testNode->get_logger(), "Nav Path Planner plug in test - requested plan path");
-    testPlugin->plan_path(request, sendOptions);
+    testPlugin->planPath(request, sendOptions);
 
     auto start = std::chrono::steady_clock::now();
 

@@ -88,7 +88,7 @@ void FakeTFPublisherNode::broadcast()
 }
 
 
-FakeImagePublisherNode::FakeImagePublisherNode() : Node("fake_image_pubkusher_node")
+FakeImagePublisherNode::FakeImagePublisherNode() : Node("fake_image_publisher_node")
 {
     imagePub_ = this->create_publisher<sensor_msgs::msg::Image>(CAMERA_TOPIC, 10);
     pubTimer_ = create_wall_timer(std::chrono::seconds(1),

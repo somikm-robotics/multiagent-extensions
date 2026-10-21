@@ -2,6 +2,8 @@
 #include "test_helpers/nav2/fake_nav2_set_parameter_server.hpp"
 #include "test_helpers/nav2/fake_nav2_follow_waypoints_server.hpp"
 #include "test_helpers/nav2/fake_nav2_compute_path_to_pose_server.hpp"
+#include "test_helpers/nav2/fake_nav2_navigate_through_poses_server.hpp"
+#include "test_helpers/nav2/fake_nav2_spin_server.hpp"
 
 FakeNav2FollowPathServer::FakeNav2FollowPathServer() : Node("fake_follow_path_server")
 {
@@ -171,6 +173,78 @@ void FakeComputePathToPoseServer::handleAccepted(const std::shared_ptr<GoalHandl
     result->path = path;
 
     RCLCPP_INFO(this->get_logger(), "handle accepted - set params");
+    goalHandle->succeed(result);
+    RCLCPP_INFO(this->get_logger(), "handle accepted - done");
+}
+
+FakeNavigateThroughPosesServer::FakeNavigateThroughPosesServer() : Node("fake_navigste_through_poses_server")
+{
+    server_ = rclcpp_action::create_server<NavigateThroughPoses>(
+            this, "/navigate_through_poses",
+            std::bind(&FakeNavigateThroughPosesServer::handleGoal, this,
+                std::placeholders::_1, std::placeholders::_2),
+            std::bind(&FakeNavigateThroughPosesServer::handleCancel, this,
+                std::placeholders::_1),
+            std::bind(&FakeNavigateThroughPosesServer::handleAccepted, this,
+                std::placeholders::_1));
+}
+
+rclcpp_action::GoalResponse FakeNavigateThroughPosesServer::handleGoal(const rclcpp_action::GoalUUID &, std::shared_ptr<const NavigateThroughPoses::Goal>)
+{
+    RCLCPP_INFO(this->get_logger(), "In handle goal");
+    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+}
+
+rclcpp_action::CancelResponse FakeNavigateThroughPosesServer::handleCancel(const std::shared_ptr<GoalHandle>)
+{
+    RCLCPP_INFO(this->get_logger(), "In handle cancel");
+    return rclcpp_action::CancelResponse::ACCEPT;
+}
+
+void FakeNavigateThroughPosesServer::handleAccepted(const std::shared_ptr<GoalHandle> goalHandle)
+{
+    RCLCPP_INFO(this->get_logger(), "In handle accepted");
+
+    //  RCLCPP_INFO(this->get_logger(), "handle accepted - creating result");
+
+    auto result = std::make_shared<NavigateThroughPoses::Result>();
+    
+    goalHandle->succeed(result);
+    RCLCPP_INFO(this->get_logger(), "handle accepted - done");
+}
+
+FakeSpinServer::FakeSpinServer() : Node("fake_spin_server")
+{
+    server_ = rclcpp_action::create_server<Spin>(
+            this, "/spin",
+            std::bind(&FakeSpinServer::handleGoal, this,
+                std::placeholders::_1, std::placeholders::_2),
+            std::bind(&FakeSpinServer::handleCancel, this,
+                std::placeholders::_1),
+            std::bind(&FakeSpinServer::handleAccepted, this,
+                std::placeholders::_1));
+}
+
+rclcpp_action::GoalResponse FakeSpinServer::handleGoal(const rclcpp_action::GoalUUID &, std::shared_ptr<const Spin::Goal>)
+{
+    RCLCPP_INFO(this->get_logger(), "In handle goal");
+    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+}
+
+rclcpp_action::CancelResponse FakeSpinServer::handleCancel(const std::shared_ptr<GoalHandle>)
+{
+    RCLCPP_INFO(this->get_logger(), "In handle cancel");
+    return rclcpp_action::CancelResponse::ACCEPT;
+}
+
+void FakeSpinServer::handleAccepted(const std::shared_ptr<GoalHandle> goalHandle)
+{
+    RCLCPP_INFO(this->get_logger(), "In handle accepted");
+
+    //  RCLCPP_INFO(this->get_logger(), "handle accepted - creating result");
+
+    auto result = std::make_shared<Spin::Result>();
+    
     goalHandle->succeed(result);
     RCLCPP_INFO(this->get_logger(), "handle accepted - done");
 }

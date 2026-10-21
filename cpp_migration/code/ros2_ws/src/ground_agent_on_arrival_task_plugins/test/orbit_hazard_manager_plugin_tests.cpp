@@ -35,17 +35,17 @@ public:
         executor_.add_node(testNode_);
 
         rclcpp::Node::SharedPtr fakeTwistPub = std::make_shared<FakeTwistSubscriberNode>();
-        rclcpp::Node::SharedPtr fakeOdomSub = std::make_shared<FakeOdomPublisherNode>(); 
+        rclcpp::Node::SharedPtr fakeOdomPub = std::make_shared<FakeOdomPublisherNode>(); 
         rclcpp::Node::SharedPtr fakeTfPub = std::make_shared<FakeTFPublisherNode>();
         rclcpp::Node::SharedPtr fakeImagePub = std::make_shared<FakeImagePublisherNode>();
 
         fakeNodes_.push_back(fakeTwistPub);
-        fakeNodes_.push_back(fakeOdomSub);
+        fakeNodes_.push_back(fakeOdomPub);
         fakeNodes_.push_back(fakeTfPub);
         fakeNodes_.push_back(fakeImagePub);
 
         executor_.add_node(fakeTwistPub);
-        executor_.add_node(fakeOdomSub);
+        executor_.add_node(fakeOdomPub);
         executor_.add_node(fakeTfPub);
         executor_.add_node(fakeImagePub);
        // RCLCPP_INFO(testNode_->get_logger(), "Testing - added common fakes");
