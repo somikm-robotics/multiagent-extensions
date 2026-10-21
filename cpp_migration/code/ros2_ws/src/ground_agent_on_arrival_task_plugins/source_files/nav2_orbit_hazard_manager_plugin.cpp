@@ -227,7 +227,7 @@ void Nav2OrbitHazardManagerPlugin::cancelDoneCallback(rclcpp_action::Client<Foll
 
 std::optional<nav_msgs::msg::Path> Nav2OrbitHazardManagerPlugin::makeMinimalPathInMap()
 {
-    auto tfOpt = lookupTransform();
+    auto tfOpt = AgentUtils::lookupTransform(tfBuffer_);
     if(!tfOpt.has_value()) 
         return std::nullopt;
 

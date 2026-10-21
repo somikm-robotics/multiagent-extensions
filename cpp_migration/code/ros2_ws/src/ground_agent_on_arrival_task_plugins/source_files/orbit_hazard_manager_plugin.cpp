@@ -75,7 +75,7 @@ void OrbitHazardManagerPlugin::odomCallback(const nav_msgs::msg::Odometry& msg)
     pose.header = msg.header;
     pose.pose = msg.pose.pose;
 
-    auto transformStampedOpt = lookupTransform();
+    auto transformStampedOpt = AgentUtils::lookupTransform(tfBuffer_);
    // RCLCPP_INFO(logger_, "looked up transform %s", transformStampedOpt.has_value() ? "True" : "False");
     if(!transformStampedOpt.has_value())
         return;
@@ -330,32 +330,6 @@ std::string OrbitHazardManagerPlugin::getOrbitHazardName(OrbitHazardManagerPlugi
                             : "TwistCommanderOrbitHazardPlugin";
 
 }
-std::optional<geometry_msgs::msg::TransformStamped> OrbitHazardManagerPlugin::lookupTransform()
-{
-    try {
-        // Ensure transform is available
-        if(!tfBuffer_->canTransform(configParams_.mapFrame, configParams_.agilexBaseFrame,
-                                    rclcpp::Time(), 
-                                    rclcpp::Duration::from_seconds(configParams_.tfTimeoutSeconds))) 
-        {
-            RCLCPP_WARN_STREAM(logger_, "TF unavailable when computing staging pose");
-            inProgress_ = false;
-            return std::nullopt;
-        }
-     //   RCLCPP_INFO(logger_, "can transform...looking");
-        auto tf = tfBuffer_->lookupTransform(configParams_.mapFrame, configParams_.agilexBaseFrame,
-                                    rclcpp::Time(), 
-                                    rclcpp::Duration::from_seconds(configParams_.tfTimeoutSeconds));
-        return tf;
-    } catch(const std::runtime_error& ex) {
-
-            RCLCPP_ERROR_STREAM(logger_, "Exception occurred whilst looking up transform-" << ex.what());
-            inProgress_ = false;
-            return std::nullopt;
-
-    }
-}
-
 
 void OrbitHazardManagerPlugin::populateOrientation(geometry_msgs::msg::PoseStamped& pose)
 {

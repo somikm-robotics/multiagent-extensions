@@ -93,7 +93,6 @@ protected:
     //methods
     void navigateToStagingPose(std::string rosBagDir);
     std::tuple<float, float> calculateRadiusAndBearing();
-    std::optional<geometry_msgs::msg::TransformStamped> lookupTransform();
     void populateOrientation(geometry_msgs::msg::PoseStamped& pose);
     void cleanup();
     void publishOrbitCompleted(bool success);

@@ -123,6 +123,10 @@ ament_target_dependencies(orbit_hazard_manager_plugin_tests
   ament_index_cpp
 )
 
+target_link_libraries(orbit_hazard_manager_plugin_tests
+    orbit_hazard_plugin
+    )
+
 pluginlib_export_plugin_description_file(
   ${PROJECT_NAME}
   include/orbit_hazard_plugin/plugin.xml
@@ -134,8 +138,11 @@ install(TARGETS
   LIBRARY DESTINATION lib
 )
 
+
 ament_export_libraries(orbit_hazard_plugin)
 ament_export_targets(export_orbit_hazard_plugin HAS_LIBRARY_TARGET)
+
+
 
 ament_export_include_directories(include)
 
