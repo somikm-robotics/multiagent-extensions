@@ -48,7 +48,7 @@
         "/world/mining_world/model/agilex_diff_drive/link/base_link/sensor/rgb_cam/camera_info",
         "/tf_static"
     ],
-
+    "nav2_spin_time_allowance_in_secs": 20,
     
     "is_orbit_clockwise": true,
     "hazard_orbit_safety_margin": 0.55,
@@ -83,6 +83,6 @@
     "v_cap_metres_per_sec": 0.20,
     "slow_ratio": 0.40,
     "angular_tol": 4.0,
-    "min_speed_scaling_factor": 0.4
-
+    "min_speed_scaling_factor": 0.4,
+    "parking_target_heading_radians": 0.0
 }

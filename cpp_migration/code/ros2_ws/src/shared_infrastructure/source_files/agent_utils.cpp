@@ -52,7 +52,14 @@ std::string AgentUtils::toHazardTypeString(const HazardType hazardType)
 
 CommandType AgentUtils::parseCommandType(const std::string commandTypeStr)
 {
-    return commandTypeStr == "APPROVED" ? CommandType::APPROVED : CommandType::CANCELLED;
+    std::string commandTypeStrUpperCase = commandTypeStr;
+    std::transform(commandTypeStr.begin(), commandTypeStr.end(), commandTypeStrUpperCase.begin(),
+            [](unsigned char c) {return std::toupper(c);});
+
+    auto logger = rclcpp::get_logger("agent_utils");            
+    //RCLCPP_INFO(logger, "Command type: original: %s, transformed: |%s|", commandTypeStr.c_str(), commandTypeStrUpperCase.c_str());
+    return commandTypeStrUpperCase == std::string{"APPROVED"} ? CommandType::APPROVED 
+                : (commandTypeStrUpperCase == std::string{"CANCELLED"} ?  CommandType::CANCELLED : CommandType::NONE);
 }
 
 TaskType AgentUtils::parseTaskType(const std::string taskTypeStr)
@@ -284,6 +291,12 @@ double AgentUtils::yawFromPose(const geometry_msgs::msg::Pose &pose)
     return quatToYaw(quat);
 }
 
+double AgentUtils::getNav2SpinTimeAllowance()
+{
+    auto& config = loadConfig();
+    return config.value("nav2_spin_time_allowance_in_secs", 15);
+}
+
 std::string AgentUtils::getCurrentOrbitHazardPlugin()
 {
     auto& config = loadConfig();
@@ -346,6 +359,38 @@ DustSensorRelayParams AgentUtils::getDustSensorRelayParams()
     configParams.MinValuesAvailibity = config["dust_sensor_relay_min_values_availibity"].get<int>();
 
     return configParams;
+}
+
+double AgentUtils::getParkingTargetHeading()
+{
+    auto& config = loadConfig();
+    return config.value("parking_target_heading_radians", 0.0); 
+}
+
+std::optional<geometry_msgs::msg::TransformStamped> AgentUtils::lookupTransform(const std::shared_ptr<tf2_ros::Buffer>& tfBuffer)
+{
+    try {
+        auto tfLookupParams = getAgilexTFLookupParams();
+
+        // Ensure transform is available
+        if(!tfBuffer->canTransform(tfLookupParams.MapFrame, tfLookupParams.BaseFrame,
+                                    rclcpp::Time(), 
+                                    rclcpp::Duration::from_seconds(tfLookupParams.TFLookupTimeoutInSecs))) 
+        {
+            RCLCPP_WARN_STREAM(logger_, "TF unavailable when computing staging pose");
+            return std::nullopt;
+        }
+     //   RCLCPP_INFO(logger_, "can transform...looking");
+        auto tf = tfBuffer->lookupTransform(tfLookupParams.MapFrame, tfLookupParams.BaseFrame,
+                                    rclcpp::Time(), 
+                                    rclcpp::Duration::from_seconds(tfLookupParams.TFLookupTimeoutInSecs));
+        return tf;
+    } catch(const std::runtime_error& ex) {
+
+            RCLCPP_ERROR_STREAM(logger_, "Exception occurred whilst looking up transform-" << ex.what());
+            return std::nullopt;
+
+    }
 }
 
 void AgentUtils::clearFolder(std::filesystem::path folderPath)
@@ -452,6 +497,21 @@ void AgentUtils::loadHazardPoses()
     }
 
 }
+
+TFLookupParams AgentUtils::getAgilexTFLookupParams()
+{
+    auto& config = loadConfig();
+    TFLookupParams tFLookupParams
+    {
+        config.value("agilex_base_frame", ""),
+        "",
+        config.value("map_frame", ""),        
+        config.value("tf_timeout_sec", 1.0f)
+    };
+    
+    return tFLookupParams;
+}
+
 
 nlohmann::json AgentUtils::getConfig()
 {

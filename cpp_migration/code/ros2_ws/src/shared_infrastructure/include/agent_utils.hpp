@@ -13,7 +13,9 @@
 #include <tuple>
 #include<optional>
 
+#include "geometry_msgs/msg/transform_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include <tf2_ros/buffer.h>
 
 #include "shared_infrastructure/enums.hpp"
 #include "shared_infrastructure/data.hpp"
@@ -76,11 +78,18 @@ public:
 
     static double yawFromPose(const geometry_msgs::msg::Pose& p);
 
+    static double getNav2SpinTimeAllowance();
+
     static std::string getCurrentOrbitHazardPlugin();
 
     static OrbitHazardConfigParams getOrbitHazardParams();
 
     static DustSensorRelayParams getDustSensorRelayParams();
+
+    static double getParkingTargetHeading();
+
+    static std::optional<geometry_msgs::msg::TransformStamped> lookupTransform(
+                               const std::shared_ptr<tf2_ros::Buffer>& tfBuffer);
 
     static void clearFolder(std::filesystem::path folderPath);
 
@@ -106,12 +115,15 @@ public:
     }
 private:
     inline static const std::string CONFIG_PATH = R"(/root/ros2_ws/src/shared_infrastructure/config/config.json)";    
+    inline static rclcpp::Logger logger_ = rclcpp::get_logger("agent_utils");
     static std::map<HazardType, SimplePose> hazardPoses_;
     
     static nlohmann::json getConfig();
     static nlohmann::json& loadConfig();
     static float getStandOffRadius(const HazardType hazardType);
     static void loadHazardPoses();  
+    static TFLookupParams getAgilexTFLookupParams();
+    
 
 };
 

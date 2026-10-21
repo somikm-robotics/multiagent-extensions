@@ -44,6 +44,7 @@ ament_target_dependencies(shared_infrastructure
   ament_index_cpp
   rclcpp
   tf2
+  tf2_ros
 )
 
 target_include_directories(shared_infrastructure PUBLIC

@@ -15,6 +15,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/PlumeDensity.srv"
   "srv/DensityRegressor.srv"
   "srv/ScanIncident.srv"
+  "srv/RotateToPosition.srv"
 
   "msg/DustSensorResult.msg"
   "msg/HazardPose.msg"
@@ -29,6 +30,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/UIAlerts.msg"
 
   "action/RequestPathPlan.action"
+  
 
   DEPENDENCIES geometry_msgs sensor_msgs
 )
