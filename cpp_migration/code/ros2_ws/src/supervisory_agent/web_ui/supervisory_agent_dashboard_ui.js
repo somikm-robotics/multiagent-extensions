@@ -23,8 +23,8 @@ class DashboardUI {
             const data = JSON.parse(e.data)
             document.getElementById('inspection-approve').disabled = !data['inspection-approve'];
             document.getElementById('inspection-cancel').disabled = !data['inspection-cancel'];
-            document.getElementById('analysis-approve').disabled = !data['analysis-approve'];
-            document.getElementById('analysis-cancel').disabled = !data['analysis-cancel'];
+            // document.getElementById('analysis-approve').disabled = !data['analysis-approve'];
+            // document.getElementById('analysis-cancel').disabled = !data['analysis-cancel'];
             document.getElementById('scan-enable').disabled = !data['scan'];
             //document.getElementById('scan-btn').disabled = !data['scan-btn'];
             this.historyArea.value += data.msg + '\n';
@@ -52,13 +52,13 @@ class DashboardUI {
 
     _bindButtons() {
         document.getElementById('inspection-approve').addEventListener('click', () => 
-            this._post('/ui/override/mission', { action: 'approve', label: 'inspection' }));
+            this._post('/ui/override/mission', { action: 'approved', label: 'inspection' }));
         document.getElementById('inspection-cancel') .addEventListener('click', () => 
-            this._post('/ui/override/mission', { action: 'cancel', label: 'inspection' }));
-        document.getElementById('analysis-approve')  .addEventListener('click', () => 
-            this._post('/ui/override/mission', { action: 'approve', label: 'analysis' }));
-        document.getElementById('analysis-cancel')   .addEventListener('click', () => 
-            this._post('/ui/override/mission', { action: 'cancel', label: 'analysis' }));
+            this._post('/ui/override/mission', { action: 'cancelled', label: 'inspection' }));
+        // document.getElementById('analysis-approve')  .addEventListener('click', () => 
+        //     this._post('/ui/override/mission', { action: 'approved', label: 'analysis' }));
+        // document.getElementById('analysis-cancel')   .addEventListener('click', () => 
+        //     this._post('/ui/override/mission', { action: 'cancelled', label: 'analysis' }));
 
         //document.getElementById('exit-btn')          .addEventListener('click', () => this._post('/exit'));
 
