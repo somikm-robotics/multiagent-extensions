@@ -41,6 +41,16 @@ void MissionOverrideNode::scanIncident(const ScanIncident::Request::SharedPtr& r
     }
     
     auto locationshazardTypePoint = itr->second;
+
+    if(locationshazardTypePoint.hazardType == HazardType::NONE) {
+        transportMsgs::HazardPose hazardDetectedMsg;
+        hazardDetectedMsg.hazard_type = AgentUtils::toHazardTypeString(locationshazardTypePoint.hazardType); 
+        hazardDetectedPub_->publish(hazardDetectedMsg);    
+        response->message  = "No hazard found";
+        response->accepted = false;
+        return;
+    }
+
     auto locationsPoint = locationshazardTypePoint.hazardPose;
     transportMsgs::HazardPose hazardDetectedMsg;
     hazardDetectedMsg.hazard_type = AgentUtils::toHazardTypeString(locationshazardTypePoint.hazardType);

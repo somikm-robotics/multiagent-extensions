@@ -9,21 +9,14 @@
         "Loc2": {
             "x": 1.5,
             "y": 4.0,
-            "hazard": "FIBROUS_HAZARD",
+            "hazard": "NONE",
             "diameter": 6.0
         },
         "Loc3": {
-            "x": 5.5,
-            "y": 2.0,
+            "x": 5.0,
+            "y": 1.0,
             "hazard": "DUST_PLUME",
             "diameter": 5.0
-        },
-        "Loc4": {
-            "x": -7.0,
-            "y": -8.0,
-            "hazard": "DUST_PLUME",
-            "diameter": 8.0
-
         }
     }
 }

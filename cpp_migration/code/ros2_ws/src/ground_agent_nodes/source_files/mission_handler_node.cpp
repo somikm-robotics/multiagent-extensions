@@ -218,12 +218,12 @@ void MissionHandlerNode::reachedTargetCallback(const transportMsgs::NavigationRe
 
 	try {
 		if(isReturn_) {
+			isReturn_ = false; // set return to false
 			this->setNextTaskType();
 			if(tasksDone_) {
 				RCLCPP_INFO_STREAM(this->get_logger(), resultMessage.message << " for " << hazardTypeStr_);
 				this->sendParkingCommand();
 			} else {
-				isReturn_ = false;
 				this->waitForApprovalOrTimeout();
 			}
 		} else {
@@ -468,6 +468,7 @@ void MissionHandlerNode::publishReturnToBaseStatus()
 										hazardTypeStr_, ". Standing by for next mission.");
 	baseReturnMessage.success = true;
 	baseReturnPub_->publish(baseReturnMessage);
+	
 }
 
 Edge MissionHandlerNode::computeEdge(float robotPosX, float robotPosY, float hazardCenterPosX, float hazardCenterPosY)

@@ -90,7 +90,7 @@ std::pair<bool, std::string> SupervisoryAgentBridgeNode::scanIncident(const std:
     }
 
     auto response = future.get();
-    //RCLCPP_INFO(this->get_logger(), "In Scan Incident - bridge node - response message: %s", response->message.c_str());
+    RCLCPP_INFO(this->get_logger(), "In Scan Incident - bridge node - response message: %s", response->message.c_str());
     return { response->accepted, response->message};
 
 }

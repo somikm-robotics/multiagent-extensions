@@ -70,8 +70,12 @@ class DashboardUI {
         this.scanBtn.addEventListener('click', () => {
             if (this.scanLocation.value)
                 this._post('/scan/incident', { locationName: this.scanLocation.value }, (data) => {
-                    document.getElementById('inspection-approve').disabled = false;
-                    document.getElementById('inspection-cancel').disabled = false;        
+                    console.log(data)
+                    if(data.success) {
+                        document.getElementById('inspection-approve').disabled = false;
+                        document.getElementById('inspection-cancel').disabled = false;        
+                    }
+                    
                 });
         });
     }
@@ -84,13 +88,17 @@ class DashboardUI {
         })
         .then(r => r.json())
         .then(data => {
+            //console.log(data)
+            
             document.getElementById('inspection-approve').disabled = true;
             document.getElementById('inspection-cancel').disabled = true;
-            document.getElementById('analysis-approve').disabled = true;
-            document.getElementById('analysis-cancel').disabled = true;
+        
+            // document.getElementById('analysis-approve').disabled = true;
+            // document.getElementById('analysis-cancel').disabled = true;
             //document.getElementById('scan-btn').disabled = true;
             document.getElementById('scan-enable').disabled = true;
             document.getElementById('scan-enable').checked = false;
+        
             if(onSuccess) onSuccess(data)
 
             this.historyArea.value += `[${data.success ? '✔' : '✖'}] ${data.message}\n`;
