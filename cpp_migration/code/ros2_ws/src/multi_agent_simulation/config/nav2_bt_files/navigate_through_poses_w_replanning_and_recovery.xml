@@ -7,6 +7,7 @@
   <BehaviorTree ID="MainTree">
     <RecoveryNode number_of_retries="6" name="NavigateRecovery">
       <PipelineSequence name="NavigateWithReplanning">
+        <RemovePassedGoals input_goals="{goals}" output_goals="{goals}" radius="0.7" robot_base_frame="agilex_diff_drive/base_link" />
         <RateController hz="0.333">
           <RecoveryNode number_of_retries="1" name="ComputePathThroughPoses">
             <ReactiveSequence>
