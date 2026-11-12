@@ -357,6 +357,7 @@ DustSensorRelayParams AgentUtils::getDustSensorRelayParams()
     configParams.MaxPublishCount = config["max_publishes_dust_sensor_relay"].get<int>();
     configParams.PublishThreshold = config["dust_sensor_relay_threshold"].get<float>();
     configParams.MinValuesAvailibity = config["dust_sensor_relay_min_values_availibity"].get<int>();
+    configParams.RelayTopic = config["dust_sensor_relay_topic"].get<std::string>();
 
     return configParams;
 }
@@ -365,6 +366,16 @@ double AgentUtils::getParkingTargetHeading()
 {
     auto& config = loadConfig();
     return config.value("parking_target_heading_radians", 0.0); 
+}
+
+TopicParams AgentUtils::getTopicParams()
+{
+    TopicParams topicParams;
+    auto& config = loadConfig();
+    topicParams.ImageTopicName = config["camera_topic"].get<std::string>();
+    topicParams.CmdVelTopicName = config["cmd_vel_topic"].get<std::string>();
+
+    return topicParams;
 }
 
 std::optional<geometry_msgs::msg::TransformStamped> AgentUtils::lookupTransform(const std::shared_ptr<tf2_ros::Buffer>& tfBuffer)

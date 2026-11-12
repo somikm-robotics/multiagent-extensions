@@ -88,6 +88,8 @@ public:
 
     static double getParkingTargetHeading();
 
+    static TopicParams getTopicParams();
+
     static std::optional<geometry_msgs::msg::TransformStamped> lookupTransform(
                                const std::shared_ptr<tf2_ros::Buffer>& tfBuffer);
 

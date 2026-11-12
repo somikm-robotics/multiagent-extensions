@@ -71,6 +71,7 @@ struct DustSensorRelayParams {
     int MaxPublishCount;
     float PublishThreshold;
     int MinValuesAvailibity;
+    std::string RelayTopic;
 };
 
 struct TFLookupParams {
@@ -78,4 +79,9 @@ struct TFLookupParams {
     std::string OdomFrame;
     std::string MapFrame;
     float TFLookupTimeoutInSecs;
+};
+
+struct TopicParams {
+    std::string ImageTopicName;
+    std::string CmdVelTopicName;
 };

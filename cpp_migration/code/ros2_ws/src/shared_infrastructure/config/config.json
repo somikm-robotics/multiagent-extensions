@@ -40,6 +40,10 @@
     "max_publishes_dust_sensor_relay": 3,
     "dust_sensor_relay_threshold": 0.1,
     "dust_sensor_relay_min_values_availibity": 2,
+    "dust_sensor_relay_topic": "/dust/agilex_diff_drive",
+    
+    "camera_topic": "/world/mining_world/model/agilex_diff_drive/link/base_link/sensor/rgb_cam/image",
+    "cmd_vel_topic": "/cmd_vel",
 
     "rosbag_qos_file": "/root/ros2_ws/src/shared_infrastructure/config/tf_qos.yaml",
     "ros_bag_topics": [
