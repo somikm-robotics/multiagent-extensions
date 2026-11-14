@@ -31,20 +31,25 @@ DustPlumeActionsNode::DustPlumeActionsNode() : Node("dust_plume_actions_node"),
     dustPlumeEstimationPlugin_ = dustPlumeEstimationPluginLoader_.createSharedInstance("DustPlumeEstimationPlugin");
     dustSensorRelayPlugin_ = dustSensorRelayPluginLoader_.createSharedInstance("DustSensorRelayPlugin");
 
-    RCLCPP_INFO(this->get_logger(), "constructor done");
+    RCLCPP_DEBUG(this->get_logger(), "constructor done");
 }
 
 void DustPlumeActionsNode::initialise()
 {
-    RCLCPP_INFO(this->get_logger(), "In initialise");
+    RCLCPP_DEBUG(this->get_logger(), "In initialise");
     dustPlumeEstimationPlugin_->initialise(this->shared_from_this());
     dustSensorRelayPlugin_->initialise(this->shared_from_this());
-    RCLCPP_INFO(this->get_logger(), "completed initialise");
+    RCLCPP_DEBUG(this->get_logger(), "completed initialise");
 }
 
 void DustPlumeActionsNode::startTasks(const transportMsgs::StartMission startMissionMsg)
 {
     started_ = true;
+    estimationDone_ = false;
+    sensorRelayDone_ = false;
+    message_.str("");
+    message_.clear();
+    missionSuccess_ = std::nullopt;
     RCLCPP_INFO(this->get_logger(), "In start tasks");
     estimationTimer_ = this->create_wall_timer(100ms,[this]() {
         estimationTimer_->cancel();
@@ -59,25 +64,23 @@ void DustPlumeActionsNode::startTasks(const transportMsgs::StartMission startMis
 
 DustPlumeActionsNode::~DustPlumeActionsNode()
 {
-    //RCLCPP_INFO(this->get_logger(), "in destructor");
+    RCLCPP_DEBUG(this->get_logger(), "in destructor");
     estimationCallbackGroup_.reset();
     sensorRelayCallbackGroup_.reset();
     dustSensorRelayPlugin_.reset();
     dustPlumeEstimationPlugin_.reset();
-
-    //RCLCPP_INFO(this->get_logger(), "destructor done");
 }
 
 void DustPlumeActionsNode::callDustPlumeEstimation()
 {
-    RCLCPP_INFO(this->get_logger(), "In call dust plume estimation");
+    RCLCPP_DEBUG(this->get_logger(), "In call dust plume estimation");
     auto request = std::make_shared<PlumeDensity::Request>();
     dustPlumeEstimationPlugin_->estimatePlumeDensity(request);
 }
 
 void DustPlumeActionsNode::callDustSensorRelay()
 {
-    RCLCPP_INFO(this->get_logger(), "In call dust sensor result");
+    RCLCPP_DEBUG(this->get_logger(), "In call dust sensor result");
     dustSensorRelayPlugin_->publishDustSensorResult();
 }
 
@@ -87,7 +90,7 @@ void DustPlumeActionsNode::notifyOnceDone(std::string message, bool success)
     missionSuccess_ = missionSuccess_.has_value() ? missionSuccess_.value() && success : success;
 
     if(estimationDone_ && sensorRelayDone_) {
-        RCLCPP_INFO(this->get_logger(), "In notify: %s", message_.str().c_str());
+        RCLCPP_DEBUG(this->get_logger(), "In notify: %s", message_.str().c_str());
         transportMsgs::MissionStatus missionStatusMsg;
         missionStatusMsg.success = missionSuccess_.value();
         missionStatusMsg.message = message_.str();
@@ -99,7 +102,7 @@ void DustPlumeActionsNode::dustPlumeEstimationCompletedCallback(const transportM
 {
     auto message = densityEstimationResultMsg.success ? "Dust Plume Estimation Completed Successfully"
                                                                        :  "Dust Plume Estimation was unsuccessful" ;
-    RCLCPP_INFO(this->get_logger(), message);
+    RCLCPP_DEBUG(this->get_logger(), message);
     estimationDone_ = true;
     notifyOnceDone(message, densityEstimationResultMsg.success);
 
@@ -111,8 +114,11 @@ void DustPlumeActionsNode::dustSensorRelayCompletedCallback(const transportMsgs:
     auto message = dustSensorResultMsg.success ? "Dust Sensor Relay Completed Successfully"
                                                                        :  "Dust Sensor Relay was unsuccessful" ;
     RCLCPP_INFO(this->get_logger(), message);
-    sensorRelayDone_ = true;
-    notifyOnceDone(message, dustSensorResultMsg.success);
+    if(dustSensorResultMsg.completed) {
+        sensorRelayDone_ = true;
+        notifyOnceDone(message, dustSensorResultMsg.success);
+    }
+    
 }
 
 
