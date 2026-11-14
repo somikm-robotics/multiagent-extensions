@@ -30,8 +30,6 @@ public:
 
 private:
 
-    inline static const std::string CAMERA_TOPIC {"/world/mining_world/model/agilex_diff_drive/link/base_link/sensor/rgb_cam/image"};
-
     // Publishers
     rclcpp::Publisher<transportMsgs::DensityEstimationResult>::SharedPtr completionPub_;
     
@@ -43,18 +41,20 @@ private:
 
     //callback
     void imageCallback(const sensor_msgs::msg::Image::SharedPtr imageMsg);
-    //rclcpp::Client<DensityRegressor>::SharedFuture future
-    //std::optional<float> getDensityResult(rclcpp::Client<DensityRegressor>::SharedFuture future);
 
     //variables
     rclcpp::Node::WeakPtr node_;
     rclcpp::Logger logger_;
     std::optional<sensor_msgs::msg::Image> cvImageOpt_;
-    bool firstImagePopulated_;
+    std::mutex cvImageMutex_;
+    std::condition_variable cvImageCondition_;
+    //bool firstImagePopulated_;
     std::optional<float> densityResult_;
     float serviceTimeout_;
+    std::string cameraTopic_;
         
     //methods
     SeverityLevel computeSeverityLevel(float density);
     void processResponse(rclcpp::Client<DensityRegressor>::SharedFuture future);
+    std::optional<sensor_msgs::msg::Image> getImage();
 };

@@ -16,19 +16,18 @@ void DustPlumeEstimationPlugin::initialise(const rclcpp::Node::SharedPtr &node)
 {
     RCLCPP_INFO(node->get_logger(), "initialising plugin");
     node_ = node;
-    //logger_ = node ->get_logger();
     completionPub_ = node->create_publisher<transportMsgs::DensityEstimationResult>(
         "estimation_complete", 10);
+    
+        cameraTopic_ = AgentUtils::getTopicParams().ImageTopicName;
 
-    imageSub_ = node->create_subscription<sensor_msgs::msg::Image>(CAMERA_TOPIC, 10, 
+    imageSub_ = node->create_subscription<sensor_msgs::msg::Image>(cameraTopic_, 10, 
         [this](const sensor_msgs::msg::Image::SharedPtr image){
         this->imageCallback(image);
     });
 
-   // RCLCPP_INFO(logger_, "created image callback");
     
     densityRegressorClient_ = node->create_client<DensityRegressor>("density_regressor");
-    firstImagePopulated_ = false;
     serviceTimeout_ = AgentUtils::getServiceTimeoutFromConfig();
 
     RCLCPP_INFO(logger_, "completed plugin initialisation");
@@ -37,15 +36,24 @@ void DustPlumeEstimationPlugin::initialise(const rclcpp::Node::SharedPtr &node)
 
 void DustPlumeEstimationPlugin::estimatePlumeDensity(std::shared_ptr<PlumeDensity::Request> densityRequest)
 {
+    
     RCLCPP_INFO(logger_, "in estimate plume density");
-    while(!cvImageOpt_.has_value()){
-        // nothing to do
-       // RCLCPP_INFO(logger_, "no image yet");
+    
+    auto cvImageOpt = getImage();
+
+    if(!cvImageOpt.has_value()) {
+        RCLCPP_ERROR(logger_, "got no image for dust plume estimation");
+        transportMsgs::DensityEstimationResult result;
+        result.success = false;
+        result.message = "Some error occured - No image was available for estimation";
+        completionPub_->publish(result);
+        return;
     }
 
-    RCLCPP_INFO(logger_, "got image: %s", cvImageOpt_.has_value() ? "true" : "false");
+
+    RCLCPP_INFO(logger_, "got image: %s", cvImageOpt.has_value() ? "true" : "false");
     auto regressorRequest = std::make_shared<DensityRegressor::Request>();
-    regressorRequest->detected_image = cvImageOpt_.value();
+    regressorRequest->detected_image = cvImageOpt.value();
     
     auto callback = [this](rclcpp::Client<DensityRegressor>::SharedFuture future) {
                                 this->processResponse(future);                
@@ -109,12 +117,32 @@ void DustPlumeEstimationPlugin::processResponse(rclcpp::Client<DensityRegressor>
     completionPub_->publish(result);
 }
 
+std::optional<sensor_msgs::msg::Image> DustPlumeEstimationPlugin::getImage()
+{
+    std::unique_lock<std::mutex> mtx(cvImageMutex_);
+    bool available = cvImageCondition_.wait_for(mtx, 
+        std::chrono::duration<float>(serviceTimeout_),
+        [this](){
+        return cvImageOpt_.has_value();
+    });
+
+    if(!available) {
+        return std::nullopt;
+    }
+
+    auto cvImage = std::move(cvImageOpt_).value();
+    cvImageOpt_.reset();
+    return cvImage;
+}
+
 void DustPlumeEstimationPlugin::imageCallback(const sensor_msgs::msg::Image::SharedPtr imageMsg)
 {
- //   RCLCPP_INFO(logger_, "in image callback");
-    cvImageOpt_ = *imageMsg;
-    if(!firstImagePopulated_)
-        firstImagePopulated_ = true;
+    {
+        std::lock_guard<std::mutex> mtx(cvImageMutex_);
+        cvImageOpt_ = *imageMsg;    
+    }
+
+    cvImageCondition_.notify_one();
 }
 
 
