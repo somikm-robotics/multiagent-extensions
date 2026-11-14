@@ -16,12 +16,6 @@
 
 namespace transportMsgs = transport_interfaces::msg;
 
-// using FollowWaypoints = nav2_msgs::action::FollowWaypoints;
-// using GoalHandle = rclcpp_action::ClientGoalHandle<FollowWaypoints>;
-
-// using FollowPath = nav2_msgs::action::FollowPath;
-// using GoalHandle = rclcpp_action::ClientGoalHandle<FollowPath>;
-
 using NavigateThroughPoses = nav2_msgs::action::NavigateThroughPoses;
 using NavigateGoalHandle = rclcpp_action::ClientGoalHandle<NavigateThroughPoses>;
 
@@ -36,13 +30,15 @@ public:
     void initialise(const rclcpp::Node::SharedPtr & node) override;
     void handleNavigation(std::shared_ptr<Navigate::Request> request) override;
     void completeRotation(std::shared_ptr<RotateToPosition::Request> request) override;
+    void publishNavigationResult(std::string message, bool success);
+    void pubishRotationResult(std::string message, bool success);
 
     ~Nav2NavigationPlugin() = default;
 
 private:
     // publishers
     rclcpp::Publisher<transportMsgs::NavigationResult>::SharedPtr reachedTargetPub_;
-    rclcpp::Publisher<transportMsgs::MissionCompleted>::SharedPtr parkingCompletedPub_;
+    rclcpp::Publisher<transportMsgs::MissionCompleted>::SharedPtr rotationCompletedPub_;
 
     // Services
     rclcpp::Service<Navigate>::SharedPtr navigateService_;    
@@ -50,25 +46,13 @@ private:
     
 
     // Nav2 client 
-    //rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SharedPtr followWaypointsClient_;
-    //rclcpp_action::Client<nav2_msgs::action::FollowPath>::SharedPtr followPathClient_;
     rclcpp_action::Client<NavigateThroughPoses>::SharedPtr navigateThroughPosesClient_;
     rclcpp_action::Client<Spin>::SharedPtr spinClient_;
-    // actions
-    //rclcpp_action::Client<nav2_msgs::action::ComputePathToPose>::SharedPtr computePathToPoseClient_;
 
     rclcpp::Node::WeakPtr node_;
     rclcpp::Logger logger_;
 
-
-
     // future handlers
-    // void followWaypointsGoalResponse(GoalHandle::SharedPtr goal_handle);
-    // void followWaypointsResult(const GoalHandle::WrappedResult& result);
-
-    // void followPathGoalResponse(GoalHandle::SharedPtr goal_handle);
-    // void followPathResult(const GoalHandle::WrappedResult& result);
-
     void navigateThroughPosesGoalResponse(NavigateGoalHandle::SharedPtr goal_handle);
     void navigateThroughPosesResult(const NavigateGoalHandle::WrappedResult& result);
 
