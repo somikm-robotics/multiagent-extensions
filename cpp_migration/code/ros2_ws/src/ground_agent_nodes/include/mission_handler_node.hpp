@@ -50,6 +50,10 @@ public:
     ~MissionHandlerNode() = default;
     
 private:
+
+    // statics
+    inline static std::string appRestartMsg_ = " - Robot is at destination or on way. App needs restart";
+
     //publishers
     rclcpp::Publisher<transportMsgs::OnArrivalTask>
             ::SharedPtr onArrivalTaskStartPub_;
@@ -89,7 +93,7 @@ private:
     void startReturnToBase(transportMsgs::MissionStatus missionStatusMessage);
     void publishReturnToBaseStatus();
     Edge computeEdge(float robotPosX, float robotPosY, float hazardCenterPosX, float hazardCenterPosY);
-
+    void cancelOverrideTimer();
 
     // request path plan action methods
     void requestPathPlan();
@@ -103,14 +107,10 @@ private:
     std::shared_ptr<PathPlannerPluginBase> pathPlannerPlugin_;
 
     // variables
-    std::optional<bool> approved_;
-    std::optional<bool> orbitApproved_;
-    bool hazardReceived_;
     HazardType hazardType_;
     std::string hazardTypeStr_;
     TaskType taskType_;
     geometry_msgs::msg::Pose hazardPose_;
-    bool isAtBase_;
     float estimatedHazardDiameter_;
     geometry_msgs::msg::Point hazardCenterPoint_;
     SimplePose agilexPose_;
@@ -126,5 +126,5 @@ private:
     std::shared_ptr<tf2_ros::TransformListener> tfListener_;
     rclcpp::TimerBase::SharedPtr parkingTfLookupCallTimer_;
     rclcpp::TimerBase::SharedPtr parkingTfLookupTimeoutTimer_;
-
+    MissionStatus missionStatus_;
 };

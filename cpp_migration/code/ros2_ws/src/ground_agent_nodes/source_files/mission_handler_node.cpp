@@ -63,16 +63,13 @@ MissionHandlerNode::MissionHandlerNode()  : Node ("mission_handler_node"),
 	tfBuffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
     tfListener_ = std::make_shared<tf2_ros::TransformListener>(*tfBuffer_, this);
 	
-	approved_ = std::nullopt;
-	orbitApproved_ = std::nullopt;							
-	hazardReceived_ = false;
+	missionStatus_ = MissionStatus::READY;
 	hazardType_ = HazardType::NONE;
 	taskType_ = TaskType::NONE;
 	estimatedHazardDiameter_ = 0.0;
 	serviceTimeout_ = AgentUtils::getServiceTimeoutFromConfig();
 	navigationOverrideTimeoutInMinutes_ = AgentUtils::getNavigationOverrideTimeoutFromConfig();
 	tasksDone_ = false;
-	isAtBase_ = true;
 	isReturn_ = false;
 }
 
@@ -84,23 +81,34 @@ void MissionHandlerNode::initialise()
 
 void MissionHandlerNode::hazardDetectedCallback(const transportMsgs::HazardPose& hazardPoseMessage)
 {
-	RCLCPP_INFO_STREAM(this->get_logger(), "Ground Agent received " << hazardPoseMessage.hazard_type);
+	RCLCPP_DEBUG_STREAM(this->get_logger(), "Ground Agent received " << hazardPoseMessage.hazard_type);
+	RCLCPP_DEBUG(this->get_logger(), "Mission status: %d", static_cast<int>(missionStatus_));
 
-
-	if(!isAtBase_) {
-		RCLCPP_INFO(this->get_logger(), "Hazard Processing in progress");
+	if(missionStatus_ != MissionStatus::READY && missionStatus_ != MissionStatus::UNKNOWN) {
+		std::string msg = "Hazard Processing in progress";
+		RCLCPP_INFO(this->get_logger(), msg.c_str());
+		publishIntermediaryStatus(msg, false);
 		return;
 	}
 
-	RCLCPP_INFO_STREAM(this->get_logger(), "hazard center point: x: " << hazardPoseMessage.hazard_center_point.x << " y: " << hazardPoseMessage.hazard_center_point.y );
-	
-	RCLCPP_INFO_STREAM(this->get_logger(), "hazard pose: x: " << hazardPoseMessage.pose.position.x << " y: " << hazardPoseMessage.pose.position.y );
+	if(missionStatus_ == MissionStatus::UNKNOWN) {
+		RCLCPP_WARN(get_logger(), "Existing previous error! New Hazard received, processing...");
+	}
 
-	hazardReceived_ = true;
+	missionStatus_ = MissionStatus::STARTED;
+
+	RCLCPP_DEBUG_STREAM(this->get_logger(), "hazard center point: x: " << hazardPoseMessage.hazard_center_point.x << " y: " << hazardPoseMessage.hazard_center_point.y );
+	
+	RCLCPP_DEBUG_STREAM(this->get_logger(), "hazard pose: x: " << hazardPoseMessage.pose.position.x << " y: " << hazardPoseMessage.pose.position.y );
+
 	hazardTypeStr_ = hazardPoseMessage.hazard_type;
 	hazardType_ = AgentUtils::parseHazardType(hazardPoseMessage.hazard_type);
 	if(hazardType_ == HazardType::NONE) {
-		RCLCPP_ERROR_STREAM(this->get_logger(), "Invalid Hazard type- " << hazardTypeStr_);
+		auto msg = std::string("Invalid Hazard type- ") + hazardTypeStr_;
+		RCLCPP_ERROR_STREAM(this->get_logger(), msg);
+		missionStatus_ = MissionStatus::UNKNOWN;
+		publishIntermediaryStatus(msg, false);
+		return;
 	}
 
 	taskType_ = hazardType_ == HazardType::FIBROUS_HAZARD ? TaskType::INITIAL_INSPECTION 
@@ -113,18 +121,28 @@ void MissionHandlerNode::hazardDetectedCallback(const transportMsgs::HazardPose&
 
 	try
 	{
-		RCLCPP_INFO_STREAM(this->get_logger(), "Waiting " << navigationOverrideTimeoutInMinutes_ << " minute(s)");
+		auto msg = "Waiting for " + std::to_string(navigationOverrideTimeoutInMinutes_) + " minute(s)";
+		RCLCPP_INFO(this->get_logger(), msg.c_str());
 		overrideTimer_ = this->create_wall_timer(std::chrono::minutes(navigationOverrideTimeoutInMinutes_),
 													std::bind(&MissionHandlerNode::checkOverrideStatus, this));
-		RCLCPP_INFO(this->get_logger(), "Created wall timer");
+		RCLCPP_DEBUG(this->get_logger(), "Created wall timer");
+		publishIntermediaryStatus(msg, true);
 	} catch(const std::runtime_error& ex) {
-		RCLCPP_ERROR(this->get_logger(), "Exception occurred: %s", ex.what());
+		auto msg = std::string("Exception occurred - ") + ex.what();
+		RCLCPP_ERROR(this->get_logger(), msg.c_str());
+		publishIntermediaryStatus(msg, false);
+		missionStatus_ = MissionStatus::UNKNOWN;
 	}
 }
 
 void MissionHandlerNode::handleOverride(std::shared_ptr<OverrideMission::Request> request, std::shared_ptr<OverrideMission::Response> response)
 {
-	RCLCPP_INFO_STREAM(this->get_logger(), "Ground Agent received " << request->command);
+	RCLCPP_DEBUG_STREAM(this->get_logger(), "Ground Agent received " << request->command);
+
+	if(missionStatus_ != MissionStatus::STARTED && missionStatus_ != MissionStatus::PENDINGANALYSIS) {
+		RCLCPP_WARN(get_logger(), "Mission is either not started or already in progress");
+		return;
+	}
 
 	auto commandType = AgentUtils::parseCommandType(request->command);
 
@@ -133,95 +151,111 @@ void MissionHandlerNode::handleOverride(std::shared_ptr<OverrideMission::Request
 	if(commandType == CommandType::APPROVED) {
 		response->status = "Dispatched";
 		response->success = true;
-		this->publishIntermediaryStatus(msg);
+		this->publishIntermediaryStatus(msg, true);
 		RCLCPP_INFO_STREAM(this->get_logger(), msg);
+	
+		if(taskType_ == TaskType::INITIAL_INSPECTION
+		|| taskType_ == TaskType::DUST_PLUME_ACTIONS) {
 
-		if(hazardReceived_) {
-			if(taskType_ == TaskType::INITIAL_INSPECTION
-				|| taskType_ == TaskType::DUST_PLUME_ACTIONS) {
-				approved_ = true;
-				this->requestPathForNavigation();
-			}
-			else if(taskType_ == TaskType::ASBESTOS_ANALYSIS) {
-				orbitApproved_ = true;
-				this->setOrbitGoal();
-				this->requestPathForNavigation();
-			}
-			hazardReceived_ = false;
+			missionStatus_ = MissionStatus::APPPROVEDINITIAL;
+			
+			this->requestPathForNavigation();
 		}
-	} else if(commandType == CommandType::CANCELLED) {
-		approved_ = false;
-		if(taskType_ == TaskType::ASBESTOS_ANALYSIS)
-			orbitApproved_ = false;
+		else if(taskType_ == TaskType::ASBESTOS_ANALYSIS) {
+			missionStatus_ = MissionStatus::APPROVEDANALYSIS;
+			this->setOrbitGoal();
+			this->requestPathForNavigation();
+		}
+	}
+	else if(commandType == CommandType::CANCELLED) {
+		missionStatus_ = MissionStatus::CANCELLED;
 		response->status = "cancelled";
 		response->success = false;
 		RCLCPP_INFO_STREAM(this->get_logger(), msg);
-		hazardReceived_ = false;
-		this->publishIntermediaryStatus(msg);
+		this->publishIntermediaryStatus(msg, false);
+		this->checkOverrideStatus();
 	}
 	else {
-		RCLCPP_INFO_STREAM(this->get_logger(), "CommandType: None");
+		std::string msg = "CommandType: None not valid";
+		RCLCPP_ERROR_STREAM(this->get_logger(), msg.c_str());
+		missionStatus_ = MissionStatus::UNKNOWN;
+		publishIntermediaryStatus(msg, false);
 	}
-
 }
 
 void MissionHandlerNode::checkOverrideStatus()
 {
-	//RCLCPP_INFO(this->get_logger(), "In check override status");
-	if(!hazardReceived_)
-		return; // nothing to do
+	if(missionStatus_ == MissionStatus::READY)
+		return; // nothing to do as its not yet started
+
+	if(missionStatus_ == MissionStatus::APPPROVEDINITIAL || missionStatus_ == MissionStatus::APPROVEDANALYSIS
+		|| missionStatus_ == MissionStatus::CANCELLED || missionStatus_ == MissionStatus::UNKNOWN){
+		this->cancelOverrideTimer();
+		if(missionStatus_ == MissionStatus::CANCELLED){
+			missionStatus_ = MissionStatus::READY;
+			RCLCPP_DEBUG(this->get_logger(), "Mission status set: %d", static_cast<int>(missionStatus_));	
+		}
+		return;
+	}
+	RCLCPP_DEBUG(this->get_logger(), "In check override status");
+	
 	try {
-		RCLCPP_INFO(this->get_logger(), "In check override status - %s orbit Approved- %s", AgentUtils::toTaskTypeStr(taskType_).c_str(), orbitApproved_.has_value() ? "True": "False");
+		RCLCPP_DEBUG(this->get_logger(), "In check override status - %s", AgentUtils::toTaskTypeStr(taskType_).c_str());
 		auto initialTaskType = hazardType_ == HazardType::FIBROUS_HAZARD ? TaskType::INITIAL_INSPECTION 
 							: (hazardType_ == HazardType::DUST_PLUME ? TaskType::DUST_PLUME_ACTIONS : TaskType::NONE);
 
+		this->cancelOverrideTimer();							
+		if(initialTaskType == TaskType::NONE) {
+			std::string msg = "No such task type";
+			RCLCPP_ERROR(this->get_logger(), msg.c_str());
+			missionStatus_ = MissionStatus::UNKNOWN;
+			publishIntermediaryStatus(msg, false);
+			return;
+		}
 		std::string msg;
-		if((taskType_ == initialTaskType && !approved_.has_value())
-			|| (taskType_ == TaskType::ASBESTOS_ANALYSIS && !orbitApproved_.has_value())) 
+		// if it had been approved / cancelled, it will not come here
+		if((taskType_ == initialTaskType || taskType_ == TaskType::ASBESTOS_ANALYSIS)) 
 		{
 			msg = "No override received, Timeout reached. Proceding with mission!";
-			RCLCPP_INFO_STREAM(this->get_logger(), msg);
+			RCLCPP_DEBUG_STREAM(this->get_logger(), msg);
 
-			if(taskType_ == initialTaskType)  {
-				if(!overrideTimer_->is_canceled())
-					overrideTimer_->cancel();
-			} else {
-				if(overrideTimerStep2_ != nullptr && !overrideTimerStep2_->is_canceled()) {
-					overrideTimerStep2_->cancel();
-				}
-			}
-			this->publishIntermediaryStatus(msg);
-
-			if(taskType_ == TaskType::INITIAL_INSPECTION) {
+			this->publishIntermediaryStatus(msg, true);
+			missionStatus_ = MissionStatus::INPROGRESS;
+			if(taskType_ == initialTaskType) {
 				this->requestPathForNavigation();
-			} else {
+			} else if(taskType_ == TaskType::ASBESTOS_ANALYSIS) {
 				this->setOrbitGoal();
 				this->requestPathForNavigation();
 			}
 		}	
 	} catch(const std::runtime_error& ex) {
-			RCLCPP_ERROR(this->get_logger(), "Exception occurred: %s", ex.what());
-	}	
-	hazardReceived_ = false;
-	approved_ = std::nullopt;
-	orbitApproved_ = std::nullopt;							
-	
+		auto msg = std::string("Exception occurred- ") + ex.what();
+		RCLCPP_ERROR(this->get_logger(), msg.c_str());
+		this->cancelOverrideTimer();
+		publishIntermediaryStatus(msg, false);
+		missionStatus_ = MissionStatus::UNKNOWN;
+	}
 }
 
 void MissionHandlerNode::reachedTargetCallback(const transportMsgs::NavigationResult& resultMessage)
 {
-	RCLCPP_INFO(this->get_logger(), "In reach target callback: is return ?: %s", isReturn_ ? "True" : "False");
+	RCLCPP_DEBUG(this->get_logger(), "In reach target callback: is return ?: %s", isReturn_ ? "True" : "False");
 	if(!resultMessage.success)	{
-		RCLCPP_ERROR(this->get_logger(), "Some error in navigation. Did not reach target");
+		// if error in navigating, robot might be stuck in between so best to restart app
+		std::string message = "Critical error during navigation. Did not reach target" + appRestartMsg_;
+		RCLCPP_ERROR(this->get_logger(), message.c_str());
+		publishIntermediaryStatus(message, false);
+		missionStatus_ = MissionStatus::CRITICAL;
 		return;
 	}
 
 	try {
 		if(isReturn_) {
-			isReturn_ = false; // set return to false
 			this->setNextTaskType();
 			if(tasksDone_) {
+				isReturn_ = false; // set return to false
 				RCLCPP_INFO_STREAM(this->get_logger(), resultMessage.message << " for " << hazardTypeStr_);
+				tasksDone_ = false;
 				this->sendParkingCommand();
 			} else {
 				this->waitForApprovalOrTimeout();
@@ -232,35 +266,45 @@ void MissionHandlerNode::reachedTargetCallback(const transportMsgs::NavigationRe
 		}
 
 	} catch(const std::runtime_error& ex) {
-
+		auto message = std::string("Exception occurred- ") + ex.what();
+		if(!isReturn_) {
+			message += appRestartMsg_;
+		}
+		RCLCPP_ERROR(get_logger(), message.c_str());
+		publishIntermediaryStatus(message, false);
+		missionStatus_ = isReturn_ ? MissionStatus::UNKNOWN : MissionStatus::CRITICAL;
 	}
 }
 
 void MissionHandlerNode::onArrivalTaskCompletion(
 	transportMsgs::MissionStatus arrivalTaskCompletionMessage)
 {
-	//RCLCPP_INFO(this->get_logger(), "In arrival task completion");
+	RCLCPP_DEBUG(this->get_logger(), "In arrival task completion");
 	isReturn_ = true;
 	auto msg = AgentUtils::getMessage("Received message: ", arrivalTaskCompletionMessage.message, 
 								 " for ", arrivalTaskCompletionMessage.hazard_type, " performing ",
 								 	arrivalTaskCompletionMessage.task_type);
 	if(!arrivalTaskCompletionMessage.success) {
+		msg += appRestartMsg_;
 		RCLCPP_ERROR(this->get_logger(), msg.c_str());
+		missionStatus_ = MissionStatus::CRITICAL;		
+		this->publishIntermediaryStatus(msg, false);
+	
 		return;
 	}
-	RCLCPP_INFO(this->get_logger(), msg.c_str());
-	this->publishIntermediaryStatus(arrivalTaskCompletionMessage.message, true,
-				hazardType_ == HazardType::FIBROUS_HAZARD);
-
+	this->publishIntermediaryStatus(arrivalTaskCompletionMessage.message, arrivalTaskCompletionMessage.success,
+									hazardType_ == HazardType::FIBROUS_HAZARD);
+	RCLCPP_DEBUG(this->get_logger(), msg.c_str());
 	this->startReturnToBase(arrivalTaskCompletionMessage);
 }
 
 void MissionHandlerNode::completedParking(transportMsgs::MissionCompleted parkingCompletedMessage)
 {
-	RCLCPP_INFO(this->get_logger(), "In completed Parking");
+	RCLCPP_DEBUG(this->get_logger(), "In completed Parking");
 	std::string msg = parkingCompletedMessage.success ? "Parking completed" : "Parking failed";
 	publishIntermediaryStatus(msg, parkingCompletedMessage.success);
 	this->publishReturnToBaseStatus();
+	missionStatus_ = MissionStatus::READY;
 }
 
 void MissionHandlerNode::publishIntermediaryStatus(
@@ -274,14 +318,13 @@ void MissionHandlerNode::publishIntermediaryStatus(
 	missionStatusMessage.requires_analysis = requiresAnalysis;
 
 	intermediadyMissionStatusPub_->publish(missionStatusMessage);
-	RCLCPP_INFO_STREAM(this->get_logger(), "Intermediary status: " << message << " published.");
+	RCLCPP_DEBUG_STREAM(this->get_logger(), "Intermediary status: " << message << " published.");
 }
 
 geometry_msgs::msg::Pose MissionHandlerNode::getReturnPose()
 {
 	auto qz = sin(agilexPose_.yaw / 2.0);
 	auto qw = cos(agilexPose_.yaw / 2.0);
-
 
 	auto pose = AgentUtils::getPose(agilexPose_, qz, qw);
 	return pose;
@@ -294,17 +337,15 @@ void MissionHandlerNode::setOrbitGoal()
 	auto hazardPoseX = hazardCenterPoint_.x;
 	auto hazardPoseY = hazardCenterPoint_.y;
 
-	RCLCPP_INFO_STREAM(this->get_logger(), "Hazard Pose: " << hazardPoseX << " " << hazardPoseY);
-	RCLCPP_INFO_STREAM(this->get_logger(), "Robot Pose: " << robotPoseX << " " << robotPoseY);
-
+	RCLCPP_DEBUG_STREAM(this->get_logger(), "Hazard Pose: " << hazardPoseX << " " << hazardPoseY);
+	RCLCPP_DEBUG_STREAM(this->get_logger(), "Robot Pose: " << robotPoseX << " " << robotPoseY);
 }
 
 void MissionHandlerNode::requestPathForNavigation()
 {
-
 	try {
 		RequestPathPlan::Goal request;
-		RCLCPP_INFO_STREAM(this->get_logger(), "hazard pose: x: "  << hazardPose_.position.x << " y: " << hazardPose_.position.y );
+		RCLCPP_DEBUG_STREAM(this->get_logger(), "hazard pose: x: "  << hazardPose_.position.x << " y: " << hazardPose_.position.y );
 
 		request.goal = isReturn_ ? returnPose_ : (taskType_ == TaskType::ASBESTOS_ANALYSIS ? hazardOrbitPose_ : hazardPose_);
 		request.is_return = isReturn_;
@@ -312,20 +353,17 @@ void MissionHandlerNode::requestPathForNavigation()
 		SendGoalOptions sendOptions;
 		sendOptions.result_callback = std::bind(&MissionHandlerNode::handlePathPlanResult, this,
 														std::placeholders::_1);
-		sendOptions.goal_response_callback = [this] (GoalHandle::SharedPtr goalHandle) {
-			if(!goalHandle) {
-				RCLCPP_ERROR(this->get_logger(), "Path Plan failed");
-			}
-			RCLCPP_INFO(this->get_logger(), "Path Plan failed");
-		};
-		sendOptions.feedback_callback = [this] (GoalHandle::SharedPtr goalHaldle, 
-										const std::shared_ptr<const RequestPathPlan::Feedback> feedback) {
-			RCLCPP_INFO(this->get_logger(), "Feedback: %s", feedback->status.c_str());
-		};
 
 		pathPlannerPlugin_->planPath(request, sendOptions);													 
 	} catch(const std::runtime_error& ex) {
-		RCLCPP_ERROR(this->get_logger(), "Exception occurred: %s", ex.what());
+		std::string msg = std::string("Exception occurred: ") + ex.what();
+		if(isReturn_) {
+			msg += appRestartMsg_;
+		}
+		RCLCPP_ERROR(this->get_logger(), msg.c_str());
+		publishIntermediaryStatus(msg, false);
+		missionStatus_ = isReturn_ ? MissionStatus::CRITICAL : MissionStatus::UNKNOWN;
+
 	}
 }
 
@@ -340,18 +378,16 @@ void MissionHandlerNode::sendNavigationCommand(std::vector<geometry_msgs::msg::P
 
 void MissionHandlerNode::sendParkingCommand()
 {
-	geometry_msgs::msg::TransformStamped currentTf;
-
-//	RCLCPP_INFO(this->get_logger(), "In send parking command");
+	RCLCPP_DEBUG(this->get_logger(), "In send parking command");
 	try {
 		parkingTfLookupCallTimer_ = this->create_wall_timer(std::chrono::milliseconds(10),
-									[this, &currentTf](){
-									//	RCLCPP_INFO(this->get_logger(), "In send parking command - looking up transform");
+									[this](){
+										RCLCPP_DEBUG(this->get_logger(), "In send parking command - looking up transform");
 										auto tfOpt = AgentUtils::lookupTransform(tfBuffer_);
 										
 										if(tfOpt.has_value()) {
-											RCLCPP_INFO(this->get_logger(), "In send parking command - lookupp transform worked");
-											currentTf = tfOpt.value();
+											RCLCPP_DEBUG(this->get_logger(), "In send parking command - lookupp transform worked");
+											geometry_msgs::msg::TransformStamped currentTf = tfOpt.value();
 											if(!parkingTfLookupCallTimer_->is_canceled())
 												parkingTfLookupCallTimer_->cancel();
 											auto request = std::make_shared<RotateToPosition::Request>();
@@ -364,7 +400,7 @@ void MissionHandlerNode::sendParkingCommand()
 
 		parkingTfLookupTimeoutTimer_ = this->create_wall_timer(std::chrono::minutes(navigationOverrideTimeoutInMinutes_),
 										[this](){
-									//		RCLCPP_INFO(this->get_logger(), "In send parking - timeout timer start");
+											RCLCPP_DEBUG(this->get_logger(), "In send parking - timeout timer start");
 											
 											if(!parkingTfLookupCallTimer_->is_canceled()){
 												RCLCPP_INFO(this->get_logger(), "TF lookup for parking timeout reached. So cannot park");
@@ -372,18 +408,18 @@ void MissionHandlerNode::sendParkingCommand()
 												std::string msg {"Parking failed"};
 												publishIntermediaryStatus(msg, false);
 												this->publishReturnToBaseStatus();
+												missionStatus_ = MissionStatus::UNKNOWN;
 											}
 											if(!parkingTfLookupTimeoutTimer_->is_canceled())
 												parkingTfLookupTimeoutTimer_->cancel();
 											});		
-											
-
-		
-		RCLCPP_INFO(this->get_logger(), "Created parking timers");
+		RCLCPP_DEBUG(this->get_logger(), "Created parking timers");
 	} catch(const std::runtime_error& ex) {
-		RCLCPP_ERROR(this->get_logger(), "Exception occurred: %s", ex.what());
+		auto msg = std::string("Exception occurred- ") + ex.what();
+		RCLCPP_ERROR(this->get_logger(), msg.c_str());
+		publishIntermediaryStatus(msg, false);
+		missionStatus_ = MissionStatus::UNKNOWN;
 	}								
-
 }
 
 void MissionHandlerNode::waitForApprovalOrTimeout()
@@ -392,7 +428,7 @@ void MissionHandlerNode::waitForApprovalOrTimeout()
 										" minute(s) for supervisor override after return to base");
 	RCLCPP_INFO_STREAM(this->get_logger(), msg);
 	this->publishIntermediaryStatus(msg, true, true);							
-	hazardReceived_ = true;
+	missionStatus_ = MissionStatus::PENDINGANALYSIS;
 	overrideTimerStep2_ = this->create_wall_timer(std::chrono::minutes(navigationOverrideTimeoutInMinutes_),
 													std::bind(&MissionHandlerNode::checkOverrideStatus, this));
 
@@ -409,10 +445,10 @@ void MissionHandlerNode::publishOnArrivalTask()
 	
 	onArrivalTaskStartPub_->publish(onArrivalTaskMsg);
 
-	RCLCPP_INFO_STREAM(this->get_logger(), "Published message on Arrival for: " 
+	RCLCPP_DEBUG_STREAM(this->get_logger(), "Published message on Arrival for: " 
 										<< hazardTypeStr_ << " - " << taskTypeStr );
 	auto msg = AgentUtils::getMessage("Arrived at the hazard and will start ", taskTypeStr);
-	this->publishIntermediaryStatus(msg);
+	this->publishIntermediaryStatus(msg, true);
 }
 
 void MissionHandlerNode::setNextTaskType()
@@ -428,7 +464,7 @@ void MissionHandlerNode::setNextTaskType()
 				// for Phase 1
 				taskType_ = TaskType::NONE;
 				tasksDone_ = true;
-				//taskType_ = TaskType::ASBESTOS_ANALYSIS;
+				//taskType_ = TaskType::ASBESTOS_ANALYSIS;  // deliberately commented out for this phase
 			} else if(taskType_ == TaskType::ASBESTOS_ANALYSIS) {
 				taskType_ = TaskType::NONE;
 				tasksDone_ = true;
@@ -447,6 +483,7 @@ void MissionHandlerNode::startReturnToBase(transportMsgs::MissionStatus missionS
 								 	missionStatusMessage.task_type);
 	if(!missionStatusMessage.success) {
 		RCLCPP_ERROR_STREAM(this->get_logger(), msg);
+		publishIntermediaryStatus(msg, false);
 		return;
 	}
 	RCLCPP_INFO_STREAM(this->get_logger(), msg);
@@ -457,7 +494,9 @@ void MissionHandlerNode::startReturnToBase(transportMsgs::MissionStatus missionS
 												": - - Navigating back to base...");
 		this->requestPathForNavigation();
 	} catch(const std::runtime_error& ex) {
-		RCLCPP_ERROR(this->get_logger(), "Exception occurred: %s", ex.what());
+		auto msg = std::string("Exception occurred- ") + ex.what();
+		RCLCPP_ERROR(this->get_logger(), msg.c_str());
+		publishIntermediaryStatus(msg, false);
 	}
 }
 
@@ -492,6 +531,19 @@ Edge MissionHandlerNode::computeEdge(float robotPosX, float robotPosY, float haz
 	return dx <0 ? Edge::WEST : Edge::EAST;
 }
 
+void MissionHandlerNode::cancelOverrideTimer()
+{
+	if(taskType_ == TaskType::INITIAL_INSPECTION || 
+		taskType_ == TaskType::DUST_PLUME_ACTIONS)  {
+		if(overrideTimer_ != nullptr && !overrideTimer_->is_canceled())
+			overrideTimer_->cancel();
+	} else if(taskType_ == TaskType::ASBESTOS_ANALYSIS) {
+		if(overrideTimerStep2_ != nullptr && !overrideTimerStep2_->is_canceled()) {
+			overrideTimerStep2_->cancel();
+		}
+	}
+}
+
 void MissionHandlerNode::requestPathPlan()
 {
 	RequestPathPlan::Goal requestPathPlanGoal;
@@ -501,11 +553,13 @@ void MissionHandlerNode::requestPathPlan()
 	options.goal_response_callback = [this](auto goal_handle) {
 		if (!goal_handle)
         {
-            RCLCPP_ERROR(this->get_logger(), "Goal rejected");
+			std::string msg = "Goal rejected";
+            RCLCPP_ERROR(this->get_logger(), msg.c_str());
+			publishIntermediaryStatus(msg, false);
             return;
         }
 
-        RCLCPP_INFO(this->get_logger(), "Goal accepted");
+        RCLCPP_DEBUG(this->get_logger(), "Goal accepted");
 	};
 
 	options.feedback_callback = [this](auto, 
@@ -520,6 +574,18 @@ void MissionHandlerNode::requestPathPlan()
 
 void MissionHandlerNode::handlePathPlanResult(const GoalHandleRequestPathPlan::WrappedResult &result)
 {
-	RCLCPP_INFO_STREAM(this->get_logger(), "Received waypoints: " << result.result->waypoints.size());
-	this->sendNavigationCommand(result.result->waypoints);
+	if(result.result->success)
+	{
+		RCLCPP_INFO_STREAM(this->get_logger(), "Received waypoints: " << result.result->waypoints.size());
+		this->sendNavigationCommand(result.result->waypoints);
+	} else {
+		auto message = result.result->message;
+		RCLCPP_ERROR_STREAM(get_logger(), "Error whilst requesting for plan paths: " << message); 
+		if(isReturn_) {
+			message += appRestartMsg_;
+		}
+		publishIntermediaryStatus(message, false);
+		missionStatus_ = isReturn_ ? MissionStatus::CRITICAL : MissionStatus::UNKNOWN;
+	}
+
 }

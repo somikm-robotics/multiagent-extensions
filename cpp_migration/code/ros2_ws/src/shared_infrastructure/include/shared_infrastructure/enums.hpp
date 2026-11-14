@@ -12,4 +12,6 @@ enum class OrbitMode: int { NONE = 0, RADIAL_IN = 1, TANGENT_ALIGN, RADIAL_OUT, 
 
 enum class SeverityLevel: int { NONE = 0, LOW = 1, MODERATE, HIGH, VERY_HIGH, SEVERE};
 
-enum class OrbitHazardManagerPluginType {Nav2 = 1, Twist};
+enum class MissionStatus: int { UNKNOWN = 0, READY = 1, STARTED = 2, CANCELLED = 3, APPPROVEDINITIAL = 4, APPROVEDANALYSIS = 5, INPROGRESS = 6,  PENDINGANALYSIS = 7, CRITICAL = 8};
+
+enum class OrbitHazardManagerPluginType : int {Nav2 = 1, Twist};
