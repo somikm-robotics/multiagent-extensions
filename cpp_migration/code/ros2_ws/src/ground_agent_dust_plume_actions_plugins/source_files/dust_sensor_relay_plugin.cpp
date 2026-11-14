@@ -15,17 +15,17 @@ void DustSensorRelayPlugin::initialise(const rclcpp::Node::SharedPtr &node)
 {
     startPublish_ = false;
     node_ = node;
-    //logger_ = node->get_logger();
     resultPub_ = node->create_publisher<transportMsgs::DustSensorResult>(
                         "dust_sensor_reading", 10);
 
-    resultSub_ =   node->create_subscription<transportMsgs::DustSensorResult>("/dust/agilex_diff_drive", 10,
+    configParams_ = AgentUtils::getDustSensorRelayParams();
+    resultSub_ =   node->create_subscription<transportMsgs::DustSensorResult>(configParams_.RelayTopic, 10,
         [this](const transportMsgs::DustSensorResult dustSensorResultMsg){
         this->sensorCallback(dustSensorResultMsg);
     });
 
     currentPubCtr_ = 0;
-    configParams_ = AgentUtils::getDustSensorRelayParams();
+    
 }
 
 void DustSensorRelayPlugin::publishDustSensorResult()
@@ -36,12 +36,17 @@ void DustSensorRelayPlugin::publishDustSensorResult()
 
 void DustSensorRelayPlugin::sensorCallback(transportMsgs::DustSensorResult dustSensorResultMsg)
 {
-    // RCLCPP_INFO_STREAM(logger_, "max pub count: " << configParams_.MaxPublishCount 
-    //                         << "startPublish: " << startPublish_ 
-    //                         << "Min values availability" << configParams_.MinValuesAvailibity);
-    if(!startPublish_ || currentPubCtr_ > configParams_.MaxPublishCount)
+    RCLCPP_DEBUG_STREAM(logger_, "max pub count: " << configParams_.MaxPublishCount 
+                            << "startPublish: " << startPublish_ 
+                            << "Min values availability" << configParams_.MinValuesAvailibity);
+    if(!startPublish_)
         return;
 
+    if(currentPubCtr_ >= configParams_.MaxPublishCount) {
+        startPublish_ = false;
+        currentPubCtr_ = 0;
+        return;
+    }
     
    std::array<float, 3> pmValues { dustSensorResultMsg.pm1_0, dustSensorResultMsg.pm2_5, dustSensorResultMsg.pm10};
    auto availableCount = std::count_if(pmValues.begin(), 
@@ -50,7 +55,7 @@ void DustSensorRelayPlugin::sensorCallback(transportMsgs::DustSensorResult dustS
                                             return val > this->configParams_.PublishThreshold;  
                                         });
            
-    //RCLCPP_INFO_STREAM(logger_, "available count: " << availableCount);                                         
+    RCLCPP_DEBUG_STREAM(logger_, "available count: " << availableCount);                                         
     if(availableCount >= configParams_.MinValuesAvailibity  ) {
         std::ostringstream stream;
         stream << "Dust Sensor Results: " << std::fixed
@@ -63,10 +68,15 @@ void DustSensorRelayPlugin::sensorCallback(transportMsgs::DustSensorResult dustS
             << std::setprecision(0) << dustSensorResultMsg.wind_direction << "°, "
             << "RH=" << std::setprecision(0) << dustSensorResultMsg.humidity << " %, "
             << "Temp=" << std::setprecision(1) << dustSensorResultMsg.temperature << " °C";
+        
+        currentPubCtr_++;
         dustSensorResultMsg.success = true;
         dustSensorResultMsg.message = stream.str();
+        
+        dustSensorResultMsg.completed = currentPubCtr_ == configParams_.MaxPublishCount;
+
         resultPub_->publish(dustSensorResultMsg);
-        currentPubCtr_++;
+        
         RCLCPP_INFO(logger_, "Dust detected – published reading");
         RCLCPP_INFO_STREAM(logger_, dustSensorResultMsg.message.c_str());
     }
