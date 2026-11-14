@@ -43,8 +43,11 @@ private:
 
     void setOrientation(std::vector<PoseStamped>& poses);
 
+    void sendResult(std::string message, rclcpp_action::ResultCode code, bool success,
+                    std::vector<geometry_msgs::msg::PoseStamped> waypoints = {});
+
     // variables
-    bool isReturn = false;
+    bool isReturn_ = false;
     inline static const float SPACING = 7.5;
     inline static const float EUCLID = 1e-3;
     inline static const float FIRSTPOSEDIFFERENCE = 0.05;

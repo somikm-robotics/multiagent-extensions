@@ -2,7 +2,6 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include <rclcpp_action/rclcpp_action.hpp>
-#include <memory>
 
 #include "transport_interfaces/action/request_path_plan.hpp"
 
