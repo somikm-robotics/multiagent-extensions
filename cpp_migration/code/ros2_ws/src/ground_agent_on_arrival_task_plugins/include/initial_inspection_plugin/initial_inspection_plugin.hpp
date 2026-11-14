@@ -17,6 +17,7 @@
 #include "initial_inspection_plugin/initial_inspection_plugin_base.hpp"
 
 #include "shared_infrastructure/enums.hpp"
+#include "shared_infrastructure/data.hpp"
 
 
 namespace transportMsgs = transport_interfaces::msg;
@@ -37,10 +38,6 @@ public:
 private:
 
     // constants
-    inline static const std::string kCameraTopic =
-        R"(/world/mining_world/model/agilex_diff_drive/link/base_link/sensor/rgb_cam/image)";
-    
-    inline static const std::string kCmdVelTopic = "/cmd_vel";
     inline static const int kNImages = 10;
     inline static const float kSpinSpeed = 0.5f;
     inline static const double kAnglePerImage = 30.0 * M_PI / 180.0;
@@ -74,6 +71,8 @@ private:
     geometry_msgs::msg::Twist twist_;
     bool hasSpinPub_;
     std::string outDir_;
+    std::filesystem::path imageDirPath_;
+    TopicParams topicParams_;
 
     void imageCallback(const sensor_msgs::msg::Image::SharedPtr imageMsg);
     void odomCallback(const nav_msgs::msg::Odometry::SharedPtr odomMsg);

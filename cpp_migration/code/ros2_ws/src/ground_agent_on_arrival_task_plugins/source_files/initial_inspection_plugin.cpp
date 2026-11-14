@@ -16,14 +16,16 @@ void InitialInspectionPlugin::initialise(const rclcpp::Node::SharedPtr &node)
     hazardType_ = HazardType::NONE;
     busy_ = false;
     spinActive_ = false;
+    hasSpinPub_ = false;
+    topicParams_ = AgentUtils::getTopicParams();
     imagesCaptured_ = 0;
 
     //Publishers
-    twistPub_ = node->create_publisher<geometry_msgs::msg::Twist>(kCmdVelTopic, 10);
+    twistPub_ = node->create_publisher<geometry_msgs::msg::Twist>(topicParams_.CmdVelTopicName, 10);
     inspectionCompletedPub_ = node->create_publisher<transportMsgs::MissionCompleted>(
                                     "inspection_complete", 10);
     //Subscriptions
-    imageSub_ = node->create_subscription<sensor_msgs::msg::Image>(kCameraTopic, 10, 
+    imageSub_ = node->create_subscription<sensor_msgs::msg::Image>(topicParams_.ImageTopicName, 10, 
         [this](const sensor_msgs::msg::Image::SharedPtr image){
         this->imageCallback(image);
     });
@@ -33,21 +35,20 @@ void InitialInspectionPlugin::initialise(const rclcpp::Node::SharedPtr &node)
     });
 
     auto imagesFolderPath = AgentUtils::getImageOutputFolderPath();
-    auto imageDirPath = std::filesystem::path(imagesFolderPath)/ kImagesOutDir;
-    auto currentTime = AgentUtils::getCurrentTimeFormatString("%Y%m%d_%H%M%S");
-    outDir_ = AgentUtils::getFolderPathStr(imageDirPath, "captured_images_"+ currentTime);
-    std::filesystem::create_directories(outDir_); 
-    RCLCPP_INFO(logger_, "In service - created folder: %s", outDir_.c_str());                                                
+    imageDirPath_ = std::filesystem::path(imagesFolderPath)/ kImagesOutDir;
 }
 
 std::shared_ptr<InitialInspection::Response> InitialInspectionPlugin::performInspection(std::shared_ptr<InitialInspection::Request> request)
 {
     // Initialize state
     imagesCaptured_ = 0;
+    auto currentTime = AgentUtils::getCurrentTimeFormatString("%Y%m%d_%H%M%S");
+    outDir_ = AgentUtils::getFolderPathStr(imageDirPath_, "captured_images_"+ currentTime);
+    std::filesystem::create_directories(outDir_); 
+    RCLCPP_INFO(logger_, "In service - created folder: %s", outDir_.c_str());                                                
     spinActive_ = true;
     hazardType_ = AgentUtils::parseHazardType(request->hazard_type);
     
-   
     auto msg = AgentUtils::getMessage("Capturing ", kNImages, " images -> ", 
                                         outDir_, " for ", request->hazard_type);
 
@@ -57,7 +58,8 @@ std::shared_ptr<InitialInspection::Response> InitialInspectionPlugin::performIns
     twist_.angular.z = kSpinSpeed;
     if(!hasSpinPub_) {
         if(auto node = node_.lock()) {
-            spinPub_ = node->create_publisher<geometry_msgs::msg::Twist>(kCmdVelTopic, 10);
+            spinPub_ = node->create_publisher<geometry_msgs::msg::Twist>(topicParams_.CmdVelTopicName, 10);
+            hasSpinPub_ = true;
         } else {
             auto msg = "Some exception occurred - Node not available";
             response->message = msg;
@@ -88,23 +90,23 @@ std::shared_ptr<InitialInspection::Response> InitialInspectionPlugin::performIns
 
 void InitialInspectionPlugin::imageCallback(const sensor_msgs::msg::Image::SharedPtr imageMsg)
 {
-   //RCLCPP_INFO(logger_, "In Image Callback: %d", imagesCaptured_);
+    RCLCPP_DEBUG(logger_, "In Image Callback: %d", imagesCaptured_);
     
     if(!spinActive_ || imagesCaptured_ >= kNImages)
         return;
 
     cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(*imageMsg, sensor_msgs::image_encodings::BGR8);
     auto img = cv_ptr->image;
-   // RCLCPP_INFO(logger_, "In Image Callback - created image");
+    RCLCPP_DEBUG(logger_, "In Image Callback - created image");
     
     if(!currentYaw_.has_value())
         return;
 
-   //RCLCPP_INFO(logger_, "In Image Callback - current yaw: %f", currentYaw_.value());
-   // RCLCPP_INFO(logger_, "In Image Callback - last yaw: %s", lastYaw_.has_value() ? "True" : "False");
+   RCLCPP_DEBUG(logger_, "In Image Callback - current yaw: %f", currentYaw_.value());
+   RCLCPP_DEBUG(logger_, "In Image Callback - last yaw: %s", lastYaw_.has_value() ? "True" : "False");
     if(!lastYaw_.has_value()) {
         lastYaw_ = currentYaw_.value();
-     //   RCLCPP_INFO(logger_, "In Image Callback - last yaw: %f", lastYaw_.value());
+        RCLCPP_DEBUG(logger_, "In Image Callback - last yaw: %f", lastYaw_.value());
         saveImage(img);
         return;
     }
@@ -112,7 +114,7 @@ void InitialInspectionPlugin::imageCallback(const sensor_msgs::msg::Image::Share
     // Compute angle difference (wrap-around safe)
     auto yaw_diff = std::abs(std::fmod(currentYaw_.value() - lastYaw_.value() + M_PI, 2 * M_PI) - M_PI);
     
-    //RCLCPP_INFO(logger_, "In Image Callback - yaw diff: %f, kAnglePerImage %f", yaw_diff, kAnglePerImage);
+    RCLCPP_DEBUG(logger_, "In Image Callback - yaw diff: %f, kAnglePerImage %f", yaw_diff, kAnglePerImage);
     
     if(yaw_diff >= kAnglePerImage) {
         lastYaw_ = currentYaw_.value();
@@ -122,20 +124,15 @@ void InitialInspectionPlugin::imageCallback(const sensor_msgs::msg::Image::Share
 
 void InitialInspectionPlugin::odomCallback(const nav_msgs::msg::Odometry::SharedPtr odomMsg)
 {
-    //auto quat = odomMsg->pose.pose.orientation;
-    //RCLCPP_INFO_STREAM(logger_, "In odom Callback 1 " << quat.w);
-    //RCLCPP_INFO_STREAM(logger_, "In odom Callback 1 x: " << quat.x << " y: " << quat.y 
-      //                              << " z: " << quat.z << " w: " << quat.w);
-    //Convert quaternion to yaw (Euler Z)
-    // auto siny_cosp = 2.0 * (quat.w * quat.z + quat.x * quat.y);
-    // auto cosy_cosp = 1.0 - 2.0 * (quat.y * quat.y + quat.z * quat.z);
-    // RCLCPP_INFO_STREAM(logger_, "In odom Callback " << siny_cosp << " " << cosy_cosp );
-
-    // auto currentYaw = atan2(siny_cosp, cosy_cosp);
+    auto quat = odomMsg->pose.pose.orientation;
+    RCLCPP_DEBUG_STREAM(logger_, "In odom Callback 1 " << quat.w);
+    RCLCPP_DEBUG_STREAM(logger_, "In odom Callback 1 x: " << quat.x << " y: " << quat.y 
+                                   << " z: " << quat.z << " w: " << quat.w);
+    
     currentYaw_ = AgentUtils::yawFromPose((*odomMsg).pose.pose);
-    // if(currentYaw_.has_value()) {
-    //     RCLCPP_INFO(logger_, "In odom Callback - set current yaw : %f", currentYaw_.value());
-    // }
+    if(currentYaw_.has_value()) {
+        RCLCPP_DEBUG(logger_, "In odom Callback - set current yaw : %f", currentYaw_.value());
+    }
 }
 
 void InitialInspectionPlugin::spinPublish()
@@ -151,18 +148,21 @@ void InitialInspectionPlugin::spinPublish()
 void InitialInspectionPlugin::saveImage(const cv::Mat& image)
 {
     auto fName = AgentUtils::getMessage("frame_", std::setw(3), std::setfill('0') ,  imagesCaptured_ + 1, ".png");
-    RCLCPP_INFO(logger_, "In save image fname: %s", fName.c_str());
+    RCLCPP_DEBUG(logger_, "In save image fname: %s", fName.c_str());
     auto fullPath = AgentUtils::getFolderPathStr(outDir_, fName);
-    RCLCPP_INFO(logger_, "In save image - full path: %s", fullPath.c_str());
+    RCLCPP_DEBUG(logger_, "In save image - full path: %s", fullPath.c_str());
     
     cv::imwrite(fullPath, image);
     ++imagesCaptured_;
-    RCLCPP_INFO(logger_, "saved image: %d", imagesCaptured_);
+    RCLCPP_DEBUG(logger_, "saved image: %d", imagesCaptured_);
     if(imagesCaptured_ >= kNImages) {
         stopSpin();
         transportMsgs::MissionCompleted msg;
+        msg.message = "Saved " + std::to_string(imagesCaptured_) + " images";
         msg.success = true;
         inspectionCompletedPub_->publish(msg);
+        lastYaw_ = std::nullopt;
+        hasSpinPub_ = false;        
     }
 }
 
@@ -175,7 +175,7 @@ void InitialInspectionPlugin::stopSpin()
         spinPub_->publish(twist);
     if(spinTimer_ != nullptr && !spinTimer_->is_canceled())
         spinTimer_->cancel();
-    //std::string message("Captured " << imagesCaptured_ << " images for " << hazardType_);
+    
     auto message = AgentUtils::getMessage("Captured ", imagesCaptured_, " images for ", AgentUtils::toHazardTypeString(hazardType_));
     RCLCPP_INFO_STREAM(logger_, message);
     
