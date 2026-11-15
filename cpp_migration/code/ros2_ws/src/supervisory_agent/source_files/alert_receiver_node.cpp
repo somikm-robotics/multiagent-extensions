@@ -9,10 +9,6 @@ AlertReceiverNode::AlertReceiverNode() : Node("alert_receiver_node")
             this->onHazardDetected(hazardDetectedMsg);
         });
 
-    // missionCompletedSub_ = this->create_subscription<transportMsgs::MissionCompleted>(
-    //                         "inspection_complete", 10, [this](const transportMsgs::MissionCompleted& completedMsg){
-    //                             this->onMissionCompleted(completedMsg);
-    //                         });        
 
     missionStatusSub_ = this->create_subscription<transportMsgs::MissionStatus>(
                             "intermediary_mission_status", 10, [this](

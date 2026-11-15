@@ -21,7 +21,6 @@ public:
     SupervisoryAgentBridgeNode();
 
     // Blocking — waits until a status message is available, returns it
-    //std::string waitForMessage(bool isStatus);
     std::string waitForStatusMessage();
     std::string waitForHistoryMessage();
 

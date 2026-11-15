@@ -26,7 +26,6 @@ private:
       void overrideMission(const OverrideMission::Request::SharedPtr& request, 
         OverrideMission::Response::SharedPtr response);
 
-      //rclcpp::Publisher<transportMsgs::UIAlerts>::SharedPtr alertsPub_;  
       rclcpp::Service<ScanIncident>::SharedPtr scanIncidentUISrv_;
       rclcpp::Service<OverrideMission>::SharedPtr overrideMissionUISrv_;
       rclcpp::Client<OverrideMission>::SharedPtr overrideMissionClient_;

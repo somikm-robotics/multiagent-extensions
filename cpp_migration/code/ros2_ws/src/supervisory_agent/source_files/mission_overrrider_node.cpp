@@ -4,7 +4,6 @@
 
 MissionOverrideNode::MissionOverrideNode() : Node("mission_override_node")
 {
-   // alertsPub_ = this->create_publisher<transportMsgs::UIAlerts>("/supervisor/status", 10);
     scanIncidentUISrv_ = this->create_service<ScanIncident>("/scan/incident", 
                         [this](const ScanIncident::Request::SharedPtr& request, 
                                 ScanIncident::Response::SharedPtr response){
@@ -97,6 +96,4 @@ void MissionOverrideNode::overrideMission(const OverrideMission::Request::Shared
             RCLCPP_INFO(this->get_logger(), "In override mission: %s", response->status.c_str());
 
     });
-    
-
 }

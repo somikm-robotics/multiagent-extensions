@@ -20,19 +20,16 @@ public:
 private:
     //publisher
     rclcpp::Publisher<transportMsgs::UIAlerts>::SharedPtr alertsPub_;
-    //rclcpp::Publisher<std_msgs::msg::String>::SharedPtr notesPub_;
 
     // subscriptions
     rclcpp::Subscription<transportMsgs::HazardPose>::SharedPtr hazardDetectedSub_;
     rclcpp::Subscription<transportMsgs::MissionStatus>::SharedPtr missionStatusSub_;
-    //rclcpp::Subscription<transportMsgs::MissionCompleted>::SharedPtr missionCompletedSub_;
     rclcpp::Subscription<transportMsgs::BaseReturn>::SharedPtr returnToBaseSub_;
     rclcpp::Subscription<transportMsgs::DensityEstimationResult>::SharedPtr densityEstimationResultSub_;
     rclcpp::Subscription<transportMsgs::DustSensorResult>::SharedPtr dustSensorResultSub_;
 
     void onHazardDetected(const transportMsgs::HazardPose& hazardDetectedMsg);
     void onMissionStatus(const transportMsgs::MissionStatus& missionStatusMsg);
-   // void onMissionCompleted(const transportMsgs::MissionCompleted& missionCompletedMsg);
     void onReturnToBase(const transportMsgs::BaseReturn& returnToBaseMsg);
     void onDensityEstimationResult(const transportMsgs::DensityEstimationResult& resultMsg);
     void onDustSensorResult(const transportMsgs::DustSensorResult& result);

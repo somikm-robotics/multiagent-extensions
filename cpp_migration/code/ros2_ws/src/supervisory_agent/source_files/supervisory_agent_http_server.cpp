@@ -68,33 +68,15 @@ void SupervisoryAgentHttpServer::registerRoutes()
 
     httpServer_.Get("/mines/locations", [this](const httplib::Request&, 
                                                 httplib::Response& res){
-        // if(logger_)
-        //     logger_("getting locations");                                                                                                
         auto locationsJSon = locationsDataProvider_();                                                    
-        // if(logger_)
-        // {
-        //     logger_("locations: " + locationsJSon);    
-        //    // logger_("locations size: " + std::to_string(locationsJSon.size()));
-        // }
         res.body = locationsJSon;
         res.set_header("Content-Type", "application/json");
         res.set_header("Access-Control-Allow-Origin", "*");  
         res.set_header("Content-Length", std::to_string(locationsJSon.size()));                                    
         res.set_content(locationsJSon, "application/json");
-        //res.set_content(std::string("[\"l1\",\"l2\"]"), "application/json");
     });
 
-    // httpServer_.Get("/sample/test", [](const httplib::Request&, httplib::Response& res) {
-    //     //res.set_content(std::string("{\"items\":[\"a\",\"b\"]}"), "application/json");
-    //     //res.set_content(std::string("[\"a\",\"b\"]"), "application/json");
-    //     res.set_content(std::string("[\"l1\",\"l2\"]"), "application/json");
-    //     //res.set_content("{\"test\":\"ok\"}", "application/json");
-
-    // });
-
     httpServer_.Get("/status/stream", [this](const httplib::Request&, httplib::Response& res) {
-        // if(logger_)
-        //     logger_("in status stream");                                                                                                
         res.set_header("Cache-Control", "no-cache");
         res.set_header("Connection",    "keep-alive");
         res.set_chunked_content_provider("text/event-stream",
@@ -106,8 +88,6 @@ void SupervisoryAgentHttpServer::registerRoutes()
     });
 
     httpServer_.Get("/history/stream", [this](const httplib::Request&, httplib::Response& res) {
-        // if(logger_)
-        //     logger_("in history stream");                                                                                                
         res.set_header("Cache-Control", "no-cache");
         res.set_header("Connection",    "keep-alive");
         res.set_chunked_content_provider("text/event-stream",
@@ -120,8 +100,6 @@ void SupervisoryAgentHttpServer::registerRoutes()
 
     httpServer_.Post("/ui/override/mission", [this](const httplib::Request& req, 
                             httplib::Response& res){
-        // if(logger_)
-        //     logger_("in ui override mission - http server");                                    
         auto jObj = nlohmann::json::parse(req.body);
         auto [success, message] = overrideMissionHandler_ 
                                     ? overrideMissionHandler_(jObj["label"], jObj["action"])
@@ -132,17 +110,12 @@ void SupervisoryAgentHttpServer::registerRoutes()
 
     httpServer_.Post("/scan/incident", [this](const httplib::Request& req, 
                             httplib::Response& res){
-        // if(logger_)
-        //     logger_("in scan incident - http server");                                                                 
         auto jObj = nlohmann::json::parse(req.body);      
         
-        //logger_(std::string("is scanHandler set ? ") + (scanIncidentHandler_ ? "yes" : "no"));
-        //logger_("location Name: " + std::string(jObj["locationName"]));                                
         auto [success, message] = scanIncidentHandler_ 
                                     ? scanIncidentHandler_(jObj["locationName"])
                                     : std::make_pair(false, 
                                                         std::string("No scan incident handler registered"));
-        //logger_("In Scan Incident - https server - response message: " + message);                                                        
         res.set_content(toJSon(success, message), "application/json");
     });
 
@@ -151,7 +124,6 @@ void SupervisoryAgentHttpServer::registerRoutes()
 void SupervisoryAgentHttpServer::serveFile(httplib::Response &res, 
     const std::string &path, const std::string &contentType)
 {
-    //std::cout << "path: " << webRoot_ + path;
     std::ifstream file(webRoot_ + path);
     if(!file) {
         res.status = 404;
