@@ -72,7 +72,7 @@ void ArrivalTaskNode::onArrival(const transportMsgs::OnArrivalTask& arrivalTaskM
                 auto initialInspectionRequest = std::make_shared<InitialInspection::Request>();
                 initialInspectionRequest->hazard_type = arrivalTaskMsg.hazard_type;
                 auto response = initialInspectionPlugin_->performInspection(initialInspectionRequest);
-                RCLCPP_INFO_STREAM(this->get_logger(), "Inspection Inspection returned: " << response->message);    
+                RCLCPP_INFO_STREAM(this->get_logger(), "Initial Inspection returned: " << response->message);    
             } else if (taskType_ == TaskType::ASBESTOS_ANALYSIS) {
                 auto orbitHazardRequest = std::make_shared<OrbitHazard::Request>();
                 orbitHazardRequest->hazard_type = arrivalTaskMsg.hazard_type;
@@ -108,7 +108,7 @@ void ArrivalTaskNode::onOrbitComplete(const transportMsgs::MissionCompleted& orb
 
 void ArrivalTaskNode::onInitialInspectionComplete(const transportMsgs::MissionCompleted& inspectionCompletedMsg)
 {
-    std::string msg = "Inspection completed";
+    std::string msg = "Inspection completed - " + inspectionCompletedMsg.message;
     this->publishTaskCompleteMessage(msg, inspectionCompletedMsg.success);
 }
 
